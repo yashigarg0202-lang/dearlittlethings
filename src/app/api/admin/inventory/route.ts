@@ -36,8 +36,9 @@ export async function PATCH(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, variant });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Inventory update error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update stock' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to update stock';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

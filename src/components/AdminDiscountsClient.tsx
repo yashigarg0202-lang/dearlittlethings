@@ -2,12 +2,24 @@
 
 import React, { useState } from 'react';
 
+export interface AdminDiscountItem {
+  id: string;
+  code: string;
+  description?: string | null;
+  discountType: string;
+  value: number;
+  minSpend?: number | null;
+  maxUses?: number | null;
+  currentUses: number;
+  isActive: boolean;
+}
+
 interface AdminDiscountsClientProps {
-  initialDiscounts: any[];
+  initialDiscounts: AdminDiscountItem[];
 }
 
 export default function AdminDiscountsClient({ initialDiscounts }: AdminDiscountsClientProps) {
-  const [discounts, setDiscounts] = useState(initialDiscounts);
+  const [discounts, setDiscounts] = useState<AdminDiscountItem[]>(initialDiscounts);
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [discountType, setDiscountType] = useState<'PERCENTAGE' | 'FIXED_AMOUNT'>('PERCENTAGE');
@@ -41,12 +53,13 @@ export default function AdminDiscountsClient({ initialDiscounts }: AdminDiscount
         throw new Error(data.error || 'Failed to create discount');
       }
 
-      setDiscounts((prev) => [data.discount, ...prev]);
+      setDiscounts((prev: AdminDiscountItem[]) => [data.discount, ...prev]);
       setCode('');
       setDescription('');
       setNotice(`Coupon code "${data.discount.code}" created and active!`);
-    } catch (err: any) {
-      setNotice(err.message || 'Error creating coupon');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error creating coupon';
+      setNotice(message);
     } finally {
       setLoading(false);
     }
@@ -61,7 +74,7 @@ export default function AdminDiscountsClient({ initialDiscounts }: AdminDiscount
         </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {discounts.map((d) => (
+          {discounts.map((d: AdminDiscountItem) => (
             <div
               key={d.id}
               style={{

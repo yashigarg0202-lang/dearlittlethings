@@ -1,11 +1,20 @@
 import React from 'react';
 import Link from 'next/link';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+type AdminProductWithRelations = Prisma.ProductGetPayload<{
+  include: {
+    category: true;
+    variants: { orderBy: { price: 'asc' } };
+    images: { orderBy: { sortOrder: 'asc' } };
+  };
+}>;
+
 export default async function AdminProductsPage() {
-  const products = await prisma.product.findMany({
+  const products: AdminProductWithRelations[] = await prisma.product.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
       category: true,
@@ -60,10 +69,10 @@ export default async function AdminProductsPage() {
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => {
+            {products.map((p: AdminProductWithRelations) => {
               const minPrice = p.variants[0]?.price || 0;
               const maxPrice = p.variants[p.variants.length - 1]?.price || minPrice;
-              const totalStock = p.variants.reduce((sum, v) => sum + v.stock, 0);
+              const totalStock = p.variants.reduce((sum: number, v: { stock: number }) => sum + v.stock, 0);
 
               return (
                 <tr

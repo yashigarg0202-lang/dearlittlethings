@@ -1,11 +1,11 @@
 import React from 'react';
 import prisma from '@/lib/prisma';
-import AdminCategoriesClient from '@/components/AdminCategoriesClient';
+import AdminCategoriesClient, { type AdminCategoryRow, type AdminCollectionRow } from '@/components/AdminCategoriesClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminCategoriesPage() {
-  const [categories, collections] = await Promise.all([
+  const [categories, collections]: [AdminCategoryRow[], AdminCollectionRow[]] = await Promise.all([
     prisma.category.findMany({
       orderBy: { sortOrder: 'asc' },
       include: {

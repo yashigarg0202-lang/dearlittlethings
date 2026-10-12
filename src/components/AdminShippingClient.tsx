@@ -2,12 +2,30 @@
 
 import React, { useState } from 'react';
 
+export interface AdminShippingRateItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  rate: number;
+  minAmount?: number | null;
+  estimatedDaysMin?: number | null;
+  estimatedDaysMax?: number | null;
+  isActive: boolean;
+}
+
+export interface AdminShippingZoneItem {
+  id: string;
+  name: string;
+  countries: string;
+  rates: AdminShippingRateItem[];
+}
+
 interface AdminShippingClientProps {
-  initialZones: any[];
+  initialZones: AdminShippingZoneItem[];
 }
 
 export default function AdminShippingClient({ initialZones }: AdminShippingClientProps) {
-  const [zones, setZones] = useState(initialZones);
+  const [zones, setZones] = useState<AdminShippingZoneItem[]>(initialZones);
   const [selectedZoneId, setSelectedZoneId] = useState(initialZones[0]?.id || '');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -44,8 +62,8 @@ export default function AdminShippingClient({ initialZones }: AdminShippingClien
         throw new Error(data.error || 'Failed to create rate');
       }
 
-      setZones((prev) =>
-        prev.map((z) =>
+      setZones((prev: AdminShippingZoneItem[]) =>
+        prev.map((z: AdminShippingZoneItem) =>
           z.id === selectedZoneId ? { ...z, rates: [...z.rates, data.rate] } : z
         )
       );
@@ -53,8 +71,9 @@ export default function AdminShippingClient({ initialZones }: AdminShippingClien
       setName('');
       setDescription('');
       setNotice(`Shipping rate "${data.rate.name}" added successfully!`);
-    } catch (err: any) {
-      setNotice(err.message || 'Error saving rate');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error saving rate';
+      setNotice(message);
     } finally {
       setLoading(false);
     }
@@ -69,7 +88,7 @@ export default function AdminShippingClient({ initialZones }: AdminShippingClien
         </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {zones.map((z) => (
+          {zones.map((z: AdminShippingZoneItem) => (
             <div
               key={z.id}
               style={{
@@ -86,7 +105,7 @@ export default function AdminShippingClient({ initialZones }: AdminShippingClien
               </span>
 
               <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {z.rates.map((r: any) => (
+                {z.rates.map((r: AdminShippingRateItem) => (
                   <div
                     key={r.id}
                     style={{

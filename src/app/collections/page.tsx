@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Metadata } from 'next';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
 export const metadata: Metadata = {
@@ -9,8 +10,23 @@ export const metadata: Metadata = {
   description: 'Curated thematic groupings of handmade goods from Mio Studio.',
 };
 
+type CollectionWithProducts = Prisma.CollectionGetPayload<{
+  include: {
+    products: {
+      include: {
+        product: {
+          include: {
+            images: { orderBy: { sortOrder: 'asc' } };
+            variants: { orderBy: { price: 'asc' } };
+          };
+        };
+      };
+    };
+  };
+}>;
+
 export default async function CollectionsPage() {
-  const collections = await prisma.collection.findMany({
+  const collections: CollectionWithProducts[] = await prisma.collection.findMany({
     orderBy: { sortOrder: 'asc' },
     include: {
       products: {
@@ -48,7 +64,7 @@ export default async function CollectionsPage() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4rem' }}>
-        {collections.map((col, index) => (
+        {collections.map((col: CollectionWithProducts, index: number) => (
           <article
             key={col.id}
             style={{

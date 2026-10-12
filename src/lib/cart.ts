@@ -1,6 +1,21 @@
 import { cookies } from 'next/headers';
+import type { Prisma } from '@prisma/client';
 import prisma from './prisma';
 import { getSession, GUEST_COOKIE_NAME } from './auth';
+
+export type CartItemWithVariant = Prisma.CartItemGetPayload<{
+  include: {
+    variant: {
+      include: {
+        product: {
+          include: {
+            images: { orderBy: { sortOrder: 'asc' } };
+          };
+        };
+      };
+    };
+  };
+}>;
 
 export async function getOrCreateCartId(): Promise<string> {
   const cookieStore = await cookies();
@@ -66,7 +81,7 @@ export async function mergeGuestCartIntoUser(guestToken: string, userId: string)
 
   // Merge items
   for (const guestItem of guestCart.items) {
-    const existing = userCart.items.find((i) => i.variantId === guestItem.variantId);
+    const existing = userCart.items.find((i: { variantId: string }) => i.variantId === guestItem.variantId);
     if (existing) {
       await prisma.cartItem.update({
         where: { id: existing.id },
@@ -110,7 +125,7 @@ export async function getCartCalculations(cartId: string) {
   if (!cart) {
     return {
       id: '',
-      items: [],
+      items: [] as CartItemWithVariant[],
       discountCode: null,
       discountAmount: 0,
       subtotal: 0,
@@ -123,7 +138,7 @@ export async function getCartCalculations(cartId: string) {
   let subtotal = 0;
   let itemCount = 0;
 
-  const validItems = cart.items.map((item) => {
+  const validItems = (cart.items as CartItemWithVariant[]).map((item: CartItemWithVariant) => {
     const itemSubtotal = item.variant.price * item.quantity;
     subtotal += itemSubtotal;
     itemCount += item.quantity;

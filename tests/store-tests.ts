@@ -4,6 +4,7 @@
  * stock reservations, and transactional email notification delivery.
  */
 
+import type { Prisma } from '@prisma/client';
 import prisma from '../src/lib/prisma';
 import { hashPassword, verifyPassword, createSessionToken, verifySessionToken } from '../src/lib/auth';
 import { sendOrderNotificationEmail, formatINR, OrderEmailPayload } from '../src/lib/email';
@@ -106,7 +107,7 @@ async function runTests() {
   const orderQuantity = 2;
 
   // Execute order request creation inside transaction
-  const createdOrder = await prisma.$transaction(async (tx) => {
+  const createdOrder = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // 1. Decrement stock
     await tx.productVariant.update({
       where: { id: sampleVariant.id },

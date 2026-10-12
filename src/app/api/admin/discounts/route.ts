@@ -54,8 +54,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, discount });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating discount:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create discount' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to create discount';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -2,16 +2,32 @@
 
 import React, { useState } from 'react';
 
+export interface AdminCategoryRow {
+  id: string;
+  name: string;
+  slug: string;
+  introText?: string | null;
+  _count: { products: number };
+}
+
+export interface AdminCollectionRow {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  image?: string | null;
+}
+
 interface AdminCategoriesClientProps {
-  initialCategories: any[];
-  initialCollections: any[];
+  initialCategories: AdminCategoryRow[];
+  initialCollections: AdminCollectionRow[];
 }
 
 export default function AdminCategoriesClient({
   initialCategories,
   initialCollections,
 }: AdminCategoriesClientProps) {
-  const [categories, setCategories] = useState(initialCategories);
+  const [categories, setCategories] = useState<AdminCategoryRow[]>(initialCategories);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [introText, setIntroText] = useState('');
@@ -49,13 +65,14 @@ export default function AdminCategoriesClient({
         throw new Error(data.error || 'Failed to create category');
       }
 
-      setCategories((prev) => [...prev, { ...data.category, _count: { products: 0 } }]);
+      setCategories((prev: AdminCategoryRow[]) => [...prev, { ...data.category, _count: { products: 0 } }]);
       setName('');
       setSlug('');
       setIntroText('');
       setNotice(`Category "${data.category.name}" created and immediately live!`);
-    } catch (err: any) {
-      setNotice(err.message || 'Error creating category');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error creating category';
+      setNotice(message);
     } finally {
       setLoading(false);
     }
@@ -70,7 +87,7 @@ export default function AdminCategoriesClient({
         </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {categories.map((c) => (
+          {categories.map((c: AdminCategoryRow) => (
             <div
               key={c.id}
               style={{

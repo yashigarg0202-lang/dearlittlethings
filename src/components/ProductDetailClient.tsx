@@ -134,7 +134,7 @@ export default function ProductDetailClient({
           {/* Thumbnails if multiple images exist */}
           {images.length > 1 && (
             <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-              {images.map((img, idx) => (
+              {images.map((img: ProductImageItem, idx: number) => (
                 <button
                   key={img.id}
                   onClick={() => setSelectedImageIndex(idx)}
@@ -246,7 +246,7 @@ export default function ProductDetailClient({
                 select edition: <strong style={{ color: 'var(--foreground)' }}>{selectedVariant.name}</strong>
               </span>
               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                {product.variants.map((v) => {
+                {product.variants.map((v: ProductVariantItem) => {
                   const isSelected = selectedVariant.id === v.id;
                   return (
                     <button
@@ -297,7 +297,7 @@ export default function ProductDetailClient({
             >
               <button
                 type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                onClick={() => setQuantity((q: number) => Math.max(1, q - 1))}
                 disabled={quantity <= 1}
                 aria-label="Decrease quantity"
                 style={{
@@ -325,7 +325,7 @@ export default function ProductDetailClient({
               </span>
               <button
                 type="button"
-                onClick={() => setQuantity((q) => Math.min(selectedVariant.stock, q + 1))}
+                onClick={() => setQuantity((q: number) => Math.min(selectedVariant.stock, q + 1))}
                 disabled={quantity >= selectedVariant.stock}
                 aria-label="Increase quantity"
                 style={{

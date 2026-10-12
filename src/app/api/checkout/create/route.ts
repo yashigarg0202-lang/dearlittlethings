@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { getOrCreateCartId, getCartCalculations } from '@/lib/cart';
+import { getOrCreateCartId, getCartCalculations, type CartItemWithVariant } from '@/lib/cart';
 import { getSession } from '@/lib/auth';
 import { sendOrderNotificationEmail, OrderEmailPayload } from '@/lib/email';
 
@@ -83,9 +84,9 @@ export async function POST(req: NextRequest) {
     const totalAmount = Math.max(0, cartCalc.total + shippingCost);
 
     // 3. Atomically verify stock, decrement stock, and create Order
-    const order = await prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Validate inventory for each item
-      for (const item of cartCalc.items) {
+      for (const item of cartCalc.items as CartItemWithVariant[]) {
         const variant = await tx.productVariant.findUnique({
           where: { id: item.variantId },
         });
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
           customerNotes: customerNotes || null,
           emailNotificationStatus: 'PENDING',
           items: {
-            create: cartCalc.items.map((i) => ({
+            create: (cartCalc.items as CartItemWithVariant[]).map((i: CartItemWithVariant) => ({
               variantId: i.variantId,
               productTitleSnapshot: i.variant.product.title,
               variantNameSnapshot: i.variant.name,
@@ -185,7 +186,7 @@ export async function POST(req: NextRequest) {
           postalCode,
           country,
         },
-        items: cartCalc.items.map((i) => ({
+        items: (cartCalc.items as CartItemWithVariant[]).map((i: CartItemWithVariant) => ({
           title: i.variant.product.title,
           variantName: i.variant.name,
           sku: i.variant.sku,
@@ -220,14 +221,15 @@ export async function POST(req: NextRequest) {
           },
         });
       }
-    } catch (emailErr: any) {
+    } catch (emailErr: unknown) {
       console.error('[Checkout] Email dispatch error:', emailErr);
+      const emailMessage = emailErr instanceof Error ? emailErr.message : 'Email dispatch exception';
       // Preserve order even if email delivery fails, record status
       await prisma.order.update({
         where: { id: order.id },
         data: {
           emailNotificationStatus: 'FAILED',
-          emailNotificationError: emailErr.message || 'Email dispatch exception',
+          emailNotificationError: emailMessage,
         },
       });
     }
@@ -237,10 +239,11 @@ export async function POST(req: NextRequest) {
       orderNumber: order.orderNumber,
       totalAmount,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Checkout error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to submit order request.';
     return NextResponse.json(
-      { error: error.message || 'Failed to submit order request.' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

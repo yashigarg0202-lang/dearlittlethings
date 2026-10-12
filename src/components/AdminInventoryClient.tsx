@@ -2,12 +2,28 @@
 
 import React, { useState } from 'react';
 
+export interface AdminVariantItem {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  stock: number;
+  product: {
+    id: string;
+    title: string;
+    category: {
+      id: string;
+      name: string;
+    };
+  };
+}
+
 interface AdminInventoryClientProps {
-  initialVariants: any[];
+  initialVariants: AdminVariantItem[];
 }
 
 export default function AdminInventoryClient({ initialVariants }: AdminInventoryClientProps) {
-  const [variants, setVariants] = useState(initialVariants);
+  const [variants, setVariants] = useState<AdminVariantItem[]>(initialVariants);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newStockVal, setNewStockVal] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,13 +47,14 @@ export default function AdminInventoryClient({ initialVariants }: AdminInventory
         throw new Error('Failed to update stock');
       }
 
-      setVariants((prev) =>
-        prev.map((v) => (v.id === variantId ? { ...v, stock } : v))
+      setVariants((prev: AdminVariantItem[]) =>
+        prev.map((v: AdminVariantItem) => (v.id === variantId ? { ...v, stock } : v))
       );
       setEditingId(null);
       setNotice('Stock updated successfully.');
-    } catch (err: any) {
-      setNotice(err.message || 'Error updating stock');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error updating stock';
+      setNotice(message);
     } finally {
       setLoading(false);
     }
@@ -69,7 +86,7 @@ export default function AdminInventoryClient({ initialVariants }: AdminInventory
             </tr>
           </thead>
           <tbody>
-            {variants.map((v) => (
+            {variants.map((v: AdminVariantItem) => (
               <tr
                 key={v.id}
                 style={{

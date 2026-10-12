@@ -106,8 +106,9 @@ export default function NewProductPage() {
 
       router.push('/admin/products');
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || 'Error creating product');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error creating product';
+      setError(msg);
       setLoading(false);
     }
   };
@@ -184,7 +185,7 @@ export default function NewProductPage() {
                   onChange={(e) => setCategoryId(e.target.value)}
                   style={{ width: '100%', padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-hairline)' }}
                 >
-                  {categories.map((c) => (
+                  {categories.map((c: { id: string; name: string }) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>

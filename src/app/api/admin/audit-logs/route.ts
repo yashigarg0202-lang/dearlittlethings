@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get('action');
 
-    const where: any = {};
+    const where: Prisma.AuditLogWhereInput = {};
     if (action) {
       where.action = action;
     }
@@ -24,8 +25,9 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ logs });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Audit log fetch error:', error);
-    return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to fetch audit logs';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

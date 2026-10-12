@@ -4,6 +4,25 @@ import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+interface MockGatewayOrderItem {
+  id: string;
+  quantity: number;
+  productTitleSnapshot: string;
+  variantNameSnapshot?: string | null;
+  priceSnapshot: number;
+}
+
+interface MockGatewayOrder {
+  id: string;
+  orderNumber: string;
+  status: string;
+  totalAmount: number;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  shippingMethodName?: string | null;
+  items: MockGatewayOrderItem[];
+}
+
 interface MockGatewayProps {
   searchParams: Promise<{
     orderId?: string;
@@ -14,7 +33,7 @@ interface MockGatewayProps {
 export default function MockGatewayPage({ searchParams }: MockGatewayProps) {
   const router = useRouter();
   const { orderId, session } = use(searchParams);
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<MockGatewayOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -44,6 +63,7 @@ export default function MockGatewayPage({ searchParams }: MockGatewayProps) {
   }, [orderId]);
 
   const handleSimulatePayment = async () => {
+    if (!order) return;
     setProcessing(true);
     setError('');
 
@@ -68,8 +88,9 @@ export default function MockGatewayPage({ searchParams }: MockGatewayProps) {
 
       // Redirect to confirmation page
       router.push(`/order-confirmation/${order.orderNumber}`);
-    } catch (err: any) {
-      setError(err.message || 'Payment processing failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Payment processing failed';
+      setError(message);
       setProcessing(false);
     }
   };
@@ -131,7 +152,7 @@ export default function MockGatewayPage({ searchParams }: MockGatewayProps) {
           <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-hairline)' }}>
             <strong>Items Snapshot:</strong>
             <ul style={{ listStyle: 'none', padding: 0, marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              {order.items.map((i: any) => (
+              {order.items.map((i: MockGatewayOrderItem) => (
                 <li key={i.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span>{i.quantity} × {i.productTitleSnapshot} ({i.variantNameSnapshot})</span>
                   <span>${((i.priceSnapshot * i.quantity) / 100).toFixed(2)}</span>

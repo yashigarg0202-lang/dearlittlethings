@@ -4,9 +4,48 @@ import React from 'react';
 import Link from 'next/link';
 import { formatINR } from '@/lib/currency';
 
+export interface OrderConfirmationAddress {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
+export interface OrderConfirmationItemRow {
+  id: string;
+  quantity: number;
+  productTitleSnapshot: string;
+  variantNameSnapshot?: string | null;
+  skuSnapshot?: string | null;
+  priceSnapshot: number;
+}
+
+export interface OrderConfirmationData {
+  id: string;
+  orderNumber: string;
+  createdAt: string | Date;
+  status: string;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
+  subtotalAmount: number;
+  discountAmount: number;
+  discountCodeUsed?: string | null;
+  shippingAmount: number;
+  shippingMethodName?: string | null;
+  totalAmount: number;
+  customerNotes?: string | null;
+  items: OrderConfirmationItemRow[];
+}
+
 interface OrderConfirmationClientProps {
-  order: any;
-  address: any;
+  order: OrderConfirmationData;
+  address: OrderConfirmationAddress;
 }
 
 export default function OrderConfirmationClient({
@@ -199,7 +238,7 @@ export default function OrderConfirmationClient({
 
         {/* Item Rows */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.75rem' }}>
-          {order.items.map((item: any) => (
+          {order.items.map((item: OrderConfirmationItemRow) => (
             <div
               key={item.id}
               style={{

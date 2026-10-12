@@ -1,9 +1,10 @@
 import React from 'react';
+import type { NewsletterSubscriber } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 
 export default async function AdminSubscribersPage() {
-  const subscribers = await prisma.newsletterSubscriber.findMany({
+  const subscribers: NewsletterSubscriber[] = await prisma.newsletterSubscriber.findMany({
     orderBy: { createdAt: 'desc' },
   });
 
@@ -73,7 +74,7 @@ export default async function AdminSubscribersPage() {
           </div>
         ) : (
           <div>
-            {subscribers.map((sub) => (
+            {subscribers.map((sub: NewsletterSubscriber) => (
               <div
                 key={sub.id}
                 style={{

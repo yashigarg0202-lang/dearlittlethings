@@ -4,9 +4,26 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { CloseIcon } from '@/icons';
 
+export interface CategoryFilterItem {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface CollectionFilterItem {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface SortOptionItem {
+  label: string;
+  val: string;
+}
+
 interface ShopFilterDrawerProps {
-  categories: { id: string; name: string; slug: string }[];
-  collections: { id: string; name: string; slug: string }[];
+  categories: CategoryFilterItem[];
+  collections: CollectionFilterItem[];
   currentCategory?: string;
   currentCollection?: string;
   currentSort?: string;
@@ -109,7 +126,7 @@ export default function ShopFilterDrawer({
                 >
                   All Categories
                 </Link>
-                {categories.map((c) => (
+                {categories.map((c: CategoryFilterItem) => (
                   <Link
                     key={c.id}
                     href={`/shop?category=${c.slug}`}
@@ -141,7 +158,7 @@ export default function ShopFilterDrawer({
                 >
                   All Series
                 </Link>
-                {collections.map((col) => (
+                {collections.map((col: CollectionFilterItem) => (
                   <Link
                     key={col.id}
                     href={`/shop?collection=${col.slug}`}
@@ -162,12 +179,12 @@ export default function ShopFilterDrawer({
             <div style={{ marginBottom: '2rem' }}>
               <h4 style={{ fontFamily: 'var(--font-serif)', marginBottom: '0.75rem' }}>Sort By</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {[
+                {([
                   { label: 'Newest Arrivals', val: 'newest' },
                   { label: 'Price: Low to High', val: 'price-asc' },
                   { label: 'Price: High to Low', val: 'price-desc' },
                   { label: 'Alphabetical', val: 'title-asc' },
-                ].map((s) => (
+                ] as SortOptionItem[]).map((s: SortOptionItem) => (
                   <Link
                     key={s.val}
                     href={`/shop?sort=${s.val}${currentCategory ? `&category=${currentCategory}` : ''}`}

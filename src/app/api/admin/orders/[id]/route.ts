@@ -54,8 +54,9 @@ export async function PATCH(
     });
 
     return NextResponse.json({ success: true, order: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating order:', error);
-    return NextResponse.json({ error: error.message || 'Failed to update order' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to update order';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

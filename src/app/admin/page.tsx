@@ -37,7 +37,7 @@ export default async function AdminDashboardPage() {
     select: { totalAmount: true },
   });
 
-  const grossSales = paidOrdersList.reduce((acc, o) => acc + o.totalAmount, 0);
+  const grossSales = paidOrdersList.reduce((acc: number, o: { totalAmount: number }) => acc + o.totalAmount, 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
@@ -162,7 +162,7 @@ export default async function AdminDashboardPage() {
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>No orders yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {recentOrders.map((ord) => (
+              {recentOrders.map((ord: { id: string; orderNumber: string; guestName: string | null; createdAt: Date; status: string; totalAmount: number; items: { id: string }[] }) => (
                 <div
                   key={ord.id}
                   style={{
@@ -224,7 +224,7 @@ export default async function AdminDashboardPage() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {lowStockVariants.map((v) => (
+            {lowStockVariants.map((v: { id: string; name: string; sku: string; stock: number; product: { title: string } }) => (
               <div
                 key={v.id}
                 style={{

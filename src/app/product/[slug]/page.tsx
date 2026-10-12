@@ -1,11 +1,32 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductDetailClient from '@/components/ProductDetailClient';
 import ProductCard from '@/components/ProductCard';
 
 export const dynamic = 'force-dynamic';
+
+type ProductPageItem = Prisma.ProductGetPayload<{
+  include: {
+    category: true;
+    images: { orderBy: { sortOrder: 'asc' } };
+    variants: { orderBy: { price: 'asc' } };
+  };
+}>;
+
+type RelatedProduct = Prisma.ProductGetPayload<{
+  include: {
+    images: { orderBy: { sortOrder: 'asc' } };
+    variants: { orderBy: { price: 'asc' } };
+    category: true;
+  };
+}>;
+
+type ShippingRateRow = Prisma.ShippingRateGetPayload<{}>;
+type ProductImageRow = Prisma.ProductImageGetPayload<{}>;
+type ProductVariantRow = Prisma.ProductVariantGetPayload<{}>;
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -34,7 +55,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
 
-  const product = await prisma.product.findUnique({
+  const product: ProductPageItem | null = await prisma.product.findUnique({
     where: { slug },
     include: {
       category: true,
@@ -52,7 +73,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     include: { rates: { where: { isActive: true }, orderBy: { rate: 'asc' } } },
   });
 
-  const shippingRates = domesticZone?.rates.map((r) => ({
+  const shippingRates = domesticZone?.rates.map((r: ShippingRateRow) => ({
     name: r.name,
     rate: r.rate,
     estimatedDaysMin: r.estimatedDaysMin,
@@ -60,7 +81,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   })) || [];
 
   // Related products (same category)
-  const relatedProducts = await prisma.product.findMany({
+  const relatedProducts: RelatedProduct[] = await prisma.product.findMany({
     where: {
       categoryId: product.categoryId,
       id: { not: product.id },
@@ -80,12 +101,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
     '@type': 'Product',
     name: product.title,
     description: product.description,
-    image: product.images.map((img) => img.url),
+    image: product.images.map((img: ProductImageRow) => img.url),
     brand: {
       '@type': 'Brand',
       name: 'dear little things',
     },
-    offers: product.variants.map((variant) => ({
+    offers: product.variants.map((variant: ProductVariantRow) => ({
       '@type': 'Offer',
       sku: variant.sku,
       price: (variant.price / 100).toFixed(2),
@@ -151,7 +172,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               rowGap: '4rem',
             }}
           >
-            {relatedProducts.map((p, idx) => (
+            {relatedProducts.map((p: RelatedProduct, idx: number) => (
               <ProductCard
                 key={p.id}
                 id={p.id}

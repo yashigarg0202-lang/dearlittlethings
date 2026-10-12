@@ -59,8 +59,9 @@ export default function AdminSettingsPage() {
       }
 
       setNotice('Studio settings and WhatsApp configuration updated live!');
-    } catch (err: any) {
-      setNotice(err.message || 'Error saving settings');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error saving settings';
+      setNotice(message);
     } finally {
       setSaving(false);
     }

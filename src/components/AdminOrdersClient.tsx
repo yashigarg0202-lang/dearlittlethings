@@ -3,20 +3,48 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 
+export interface AdminOrderItemSnapshot {
+  id: string;
+  quantity: number;
+  productTitleSnapshot: string;
+  variantNameSnapshot: string;
+  priceSnapshot: number;
+}
+
+export interface AdminOrderRecord {
+  id: string;
+  orderNumber: string;
+  createdAt: string | Date;
+  status: string;
+  totalAmount: number;
+  guestName?: string | null;
+  guestEmail?: string | null;
+  guestPhone?: string | null;
+  shippingAddress?: string | null;
+  customerNotes?: string | null;
+  trackingCarrier?: string | null;
+  trackingNumber?: string | null;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+  } | null;
+  items: AdminOrderItemSnapshot[];
+}
+
 interface AdminOrdersClientProps {
-  initialOrders: any[];
+  initialOrders: AdminOrderRecord[];
 }
 
 export default function AdminOrdersClient({ initialOrders }: AdminOrdersClientProps) {
-  const [orders, setOrders] = useState(initialOrders);
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [orders, setOrders] = useState<AdminOrderRecord[]>(initialOrders);
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrderRecord | null>(null);
   const [carrier, setCarrier] = useState('USPS');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [status, setStatus] = useState('PENDING');
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState('');
 
-  const openOrderModal = (order: any) => {
+  const openOrderModal = (order: AdminOrderRecord) => {
     setSelectedOrder(order);
     setStatus(order.status);
     setCarrier(order.trackingCarrier || 'USPS');
@@ -46,12 +74,13 @@ export default function AdminOrdersClient({ initialOrders }: AdminOrdersClientPr
       }
 
       setNotice('Order updated successfully!');
-      setOrders((prev) =>
-        prev.map((o) => (o.id === selectedOrder.id ? { ...o, status, trackingCarrier: carrier, trackingNumber } : o))
+      setOrders((prev: AdminOrderRecord[]) =>
+        prev.map((o: AdminOrderRecord) => (o.id === selectedOrder.id ? { ...o, status, trackingCarrier: carrier, trackingNumber } : o))
       );
-      setSelectedOrder((prev: any) => ({ ...prev, status, trackingCarrier: carrier, trackingNumber }));
-    } catch (err: any) {
-      setNotice(err.message || 'Update failed');
+      setSelectedOrder((prev: AdminOrderRecord | null) => (prev ? { ...prev, status, trackingCarrier: carrier, trackingNumber } : null));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Update failed';
+      setNotice(message);
     } finally {
       setLoading(false);
     }
@@ -80,7 +109,7 @@ export default function AdminOrdersClient({ initialOrders }: AdminOrdersClientPr
             </tr>
           </thead>
           <tbody>
-            {orders.map((o) => (
+            {orders.map((o: AdminOrderRecord) => (
               <tr
                 key={o.id}
                 style={{
@@ -199,7 +228,7 @@ export default function AdminOrdersClient({ initialOrders }: AdminOrdersClientPr
               <div>
                 <strong>Shipping Address:</strong> {(() => {
                   try {
-                    const a = JSON.parse(selectedOrder.shippingAddress);
+                    const a = JSON.parse(selectedOrder.shippingAddress || '{}');
                     return `${a.fullName}, ${a.addressLine1} ${a.addressLine2 || ''}, ${a.city}, ${a.state || ''} ${a.postalCode}, ${a.country} (Phone: ${a.phone || 'N/A'})`;
                   } catch {
                     return selectedOrder.shippingAddress;
@@ -217,7 +246,7 @@ export default function AdminOrdersClient({ initialOrders }: AdminOrdersClientPr
                 Itemized Snapshots:
               </strong>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.85rem' }}>
-                {selectedOrder.items.map((i: any) => (
+                {selectedOrder.items.map((i: AdminOrderItemSnapshot) => (
                   <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>{i.quantity} &times; {i.productTitleSnapshot} ({i.variantNameSnapshot})</span>
                     <span>${((i.priceSnapshot * i.quantity) / 100).toFixed(2)}</span>

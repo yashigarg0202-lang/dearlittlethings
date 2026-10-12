@@ -60,8 +60,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, settings: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Settings save error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to save settings' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to save settings';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

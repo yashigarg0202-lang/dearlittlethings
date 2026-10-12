@@ -1,13 +1,22 @@
 import React from 'react';
 import Link from 'next/link';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
 
 export const dynamic = 'force-dynamic';
 
+type HomeProduct = Prisma.ProductGetPayload<{
+  include: {
+    images: true;
+    variants: true;
+    category: true;
+  };
+}>;
+
 export default async function HomePage() {
   // Fetch active products with images and variants from database
-  let products: any[] = [];
+  let products: HomeProduct[] = [];
   try {
     products = await prisma.product.findMany({
       where: { status: 'ACTIVE' },
@@ -328,7 +337,7 @@ export default async function HomePage() {
             rowGap: '4rem',
           }}
         >
-          {products.map((product, idx) => (
+          {products.map((product: HomeProduct, idx: number) => (
             <ProductCard
               key={product.id}
               id={product.id}

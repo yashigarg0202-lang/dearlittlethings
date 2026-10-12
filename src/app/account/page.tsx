@@ -4,9 +4,49 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+export interface AccountOrderItem {
+  id: string;
+  quantity: number;
+  productTitleSnapshot: string;
+  variantNameSnapshot?: string | null;
+  priceSnapshot: number;
+}
+
+export interface AccountOrder {
+  id: string;
+  orderNumber: string;
+  createdAt: string | Date;
+  status: string;
+  totalAmount: number;
+  shippingMethodName?: string | null;
+  trackingNumber?: string | null;
+  items: AccountOrderItem[];
+}
+
+export interface AccountAddress {
+  id: string;
+  fullName: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  city: string;
+  state?: string | null;
+  postalCode: string;
+  country: string;
+  phone?: string | null;
+}
+
+export interface AccountProfileData {
+  id: string;
+  name?: string | null;
+  email: string;
+  role: string;
+  orders: AccountOrder[];
+  addresses: AccountAddress[];
+}
+
 export default function AccountDashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AccountProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'orders' | 'addresses' | 'privacy'>('orders');
 
@@ -165,7 +205,7 @@ export default function AccountDashboardPage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {user.orders.map((order: any) => (
+              {user.orders.map((order: AccountOrder) => (
                 <div
                   key={order.id}
                   style={{
@@ -215,7 +255,7 @@ export default function AccountDashboardPage() {
 
                   {/* Items */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                    {order.items.map((item: any) => (
+                    {order.items.map((item: AccountOrderItem) => (
                       <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
                         <span>
                           {item.quantity} × {item.productTitleSnapshot} ({item.variantNameSnapshot})
@@ -263,7 +303,7 @@ export default function AccountDashboardPage() {
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-              {user.addresses.map((addr: any) => (
+              {user.addresses.map((addr: AccountAddress) => (
                 <div
                   key={addr.id}
                   style={{

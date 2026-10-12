@@ -43,7 +43,7 @@ export default function ProductCard({
 
   const defaultVariant = variants[0];
   const price = defaultVariant ? defaultVariant.price : 0;
-  const isAvailable = variants.some((v) => v.stock > 0);
+  const isAvailable = variants.some((v: ProductCardProps['variants'][number]) => v.stock > 0);
 
   const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();

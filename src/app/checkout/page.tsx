@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCart } from '@/context/CartContext';
+import { useCart, type CartItemData } from '@/context/CartContext';
 import { formatINR } from '@/lib/currency';
 
 interface ShippingRateOption {
@@ -90,9 +90,9 @@ export default function CheckoutPage() {
 
   const subtotal = cart?.subtotal || 0;
   const discountAmount = cart?.discountAmount || 0;
-  const items = cart?.items || [];
+  const items: CartItemData[] = cart?.items || [];
 
-  const selectedRate = shippingRates.find((r) => r.id === selectedRateId);
+  const selectedRate = shippingRates.find((r: ShippingRateOption) => r.id === selectedRateId);
   let shippingCost = selectedRate ? selectedRate.rate : 0;
   if (selectedRate && selectedRate.minAmount !== null && subtotal >= selectedRate.minAmount) {
     shippingCost = 0;
@@ -181,8 +181,9 @@ export default function CheckoutPage() {
 
       await refreshCart();
       router.push(`/order-confirmation/${data.orderNumber}`);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Checkout failed. Please check your information.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Checkout failed. Please check your information.';
+      setErrorMessage(message);
       setSubmitting(false);
     }
   };
@@ -626,7 +627,7 @@ export default function CheckoutPage() {
                 <div style={{ color: 'var(--muted-foreground)', fontSize: '0.875rem' }}>Loading delivery options...</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {shippingRates.map((rate) => {
+                  {shippingRates.map((rate: ShippingRateOption) => {
                     const isQualifyingFree = rate.minAmount !== null && subtotal >= rate.minAmount;
                     const displayCost = isQualifyingFree ? 0 : rate.rate;
 
@@ -744,7 +745,7 @@ export default function CheckoutPage() {
 
             {/* Item list */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.75rem' }}>
-              {items.map((item) => (
+              {items.map((item: CartItemData) => (
                 <div
                   key={item.id}
                   style={{

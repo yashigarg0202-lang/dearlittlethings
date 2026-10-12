@@ -30,8 +30,9 @@ export default function RegisterPage() {
       }
 
       router.push('/account');
-    } catch (err: any) {
-      setError(err.message || 'Registration failed');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Registration failed';
+      setError(message);
       setLoading(false);
     }
   };

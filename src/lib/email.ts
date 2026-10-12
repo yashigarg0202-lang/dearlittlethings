@@ -271,8 +271,9 @@ export async function sendOrderNotificationEmail(
         console.warn('[Email] Resend API response error:', data);
         // Fall through to local outbox logging so the notification is never lost
       }
-    } catch (err: any) {
-      console.error('[Email] Failed to call Resend API:', err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown email API error';
+      console.error('[Email] Failed to call Resend API:', msg);
       // Fall through to local outbox
     }
   }
@@ -305,12 +306,13 @@ export async function sendOrderNotificationEmail(
       provider: 'local_outbox',
       filePath: `outbox/${filename}`,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[Email] Failed to write outbox file:', err);
+    const msg = err instanceof Error ? err.message : 'Unknown outbox file error';
     return {
       success: false,
       provider: 'local_outbox',
-      error: err.message,
+      error: msg,
     };
   }
 }

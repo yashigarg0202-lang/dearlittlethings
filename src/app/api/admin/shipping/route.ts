@@ -56,8 +56,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, rate });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Shipping rate creation error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to create rate' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to create rate';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { NewsletterSubscriber } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -12,14 +13,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const format = searchParams.get('format');
 
-    const subscribers = await prisma.newsletterSubscriber.findMany({
+    const subscribers: NewsletterSubscriber[] = await prisma.newsletterSubscriber.findMany({
       orderBy: { createdAt: 'desc' },
     });
 
     if (format === 'csv') {
       const csvHeader = 'Email,Status,SubscribedAt\n';
       const csvRows = subscribers
-        .map((s) => `"${s.email}","${s.status}","${s.createdAt.toISOString()}"`)
+        .map((s: NewsletterSubscriber) => `"${s.email}","${s.status}","${s.createdAt.toISOString()}"`)
         .join('\n');
       const csvContent = csvHeader + csvRows;
 
@@ -33,8 +34,9 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({ subscribers });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Admin subscribers error:', error);
-    return NextResponse.json({ error: 'Failed to fetch subscribers' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to fetch subscribers';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

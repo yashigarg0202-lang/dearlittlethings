@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
 
@@ -10,6 +11,16 @@ export const metadata: Metadata = {
   title: 'the collection | dear little things',
   description: 'browse all our handmade stickers, keyrings, charms, and slow-crochet goods.',
 };
+
+type ShopProduct = Prisma.ProductGetPayload<{
+  include: {
+    images: { orderBy: { sortOrder: 'asc' } };
+    variants: { orderBy: { price: 'asc' } };
+    category: true;
+  };
+}>;
+
+type ShopCategory = Prisma.CategoryGetPayload<{}>;
 
 interface ShopPageProps {
   searchParams: Promise<{
@@ -25,7 +36,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const query = params.q?.trim() || '';
 
   // Build Prisma where query
-  const where: any = {
+  const where: Prisma.ProductWhereInput = {
     status: 'ACTIVE',
   };
 
@@ -41,7 +52,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     ];
   }
 
-  const [products, categories] = await Promise.all([
+  const [products, categories]: [ShopProduct[], ShopCategory[]] = await Promise.all([
     prisma.product.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -56,7 +67,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
 
   const categoryPills = [
     { label: 'everything', slug: 'all', href: '/shop' },
-    ...categories.map((c) => ({
+    ...categories.map((c: ShopCategory) => ({
       label: c.name.toLowerCase(),
       slug: c.slug,
       href: `/shop?category=${c.slug}`,
@@ -183,7 +194,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             rowGap: '4.5rem',
           }}
         >
-          {products.map((product, idx) => (
+          {products.map((product: ShopProduct, idx: number) => (
             <ProductCard
               key={product.id}
               id={product.id}

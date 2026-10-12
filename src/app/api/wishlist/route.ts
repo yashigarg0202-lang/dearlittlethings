@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { getSession, GUEST_COOKIE_NAME } from '@/lib/auth';
+
+type WishlistItemWithProduct = Prisma.WishlistItemGetPayload<{
+  include: {
+    product: {
+      include: {
+        images: { orderBy: { sortOrder: 'asc' } };
+        variants: { orderBy: { price: 'asc' } };
+      };
+    };
+  };
+}>;
 
 export async function GET() {
   try {
@@ -9,7 +21,7 @@ export async function GET() {
     const cookieStore = await cookies();
     const guestId = cookieStore.get(GUEST_COOKIE_NAME)?.value;
 
-    let items: any[] = [];
+    let items: WishlistItemWithProduct[] = [];
     if (session?.userId) {
       items = await prisma.wishlistItem.findMany({
         where: { userId: session.userId },
@@ -39,12 +51,13 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      items: items.map((i) => i.product),
-      productIds: items.map((i) => i.productId),
+      items: items.map((i: WishlistItemWithProduct) => i.product),
+      productIds: items.map((i: WishlistItemWithProduct) => i.productId),
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching wishlist:', error);
-    return NextResponse.json({ error: 'Failed to retrieve wishlist' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to retrieve wishlist';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

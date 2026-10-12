@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useCart } from '@/context/CartContext';
+import { useCart, type CartItemData } from '@/context/CartContext';
 import { formatINR } from '@/lib/currency';
 
 export default function CartDrawer() {
@@ -42,8 +42,8 @@ export default function CartDrawer() {
 
   if (!isCartOpen) return null;
 
-  const items = cart?.items || [];
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const items: CartItemData[] = cart?.items || [];
+  const itemCount = items.reduce((sum: number, item: CartItemData) => sum + item.quantity, 0);
   const subtotal = cart?.subtotal || 0;
 
   return (
@@ -184,7 +184,7 @@ export default function CartDrawer() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {items.map((item) => {
+              {items.map((item: CartItemData) => {
                 const image = item.variant?.product?.images?.[0]?.url;
                 const title = item.variant?.product?.title || 'Handmade Item';
                 const variantName = item.variant?.name;
