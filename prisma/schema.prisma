@@ -1,0 +1,332 @@
+// Prisma schema for Mio Studio E-commerce Store
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String         @id @default(cuid())
+  email              String         @unique
+  passwordHash       String
+  name               String?
+  role               String         @default("CUSTOMER") // CUSTOMER or ADMIN
+  mustChangePassword Boolean        @default(false)
+  addresses          Address[]
+  orders             Order[]
+  carts              Cart[]
+  wishlist           WishlistItem[]
+  auditLogs          AuditLog[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model Address {
+  id                String   @id @default(cuid())
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName          String
+  addressLine1      String
+  addressLine2      String?
+  city              String
+  state             String?
+  postalCode        String
+  country           String
+  phone             String?
+  isDefaultShipping Boolean  @default(false)
+  isDefaultBilling  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Category {
+  id             String     @id @default(cuid())
+  name           String
+  slug           String     @unique
+  introText      String?
+  editorialImage String?
+  sortOrder      Int        @default(0)
+  parentId       String?
+  parent         Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children       Category[] @relation("CategoryHierarchy")
+  products       Product[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model Collection {
+  id          String              @id @default(cuid())
+  name        String
+  slug        String              @unique
+  description String?
+  image       String?
+  isFeatured  Boolean             @default(false)
+  sortOrder   Int                 @default(0)
+  products    ProductCollection[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model Product {
+  id                  String              @id @default(cuid())
+  title               String
+  slug                String              @unique
+  description         String
+  status              String              @default("ACTIVE") // ACTIVE, DRAFT, ARCHIVED
+  categoryId          String
+  category            Category            @relation(fields: [categoryId], references: [id])
+  collections         ProductCollection[]
+  tags                String? // comma-separated tags
+  materials           String?
+  dimensions          String?
+  careInstructions    String?
+  isHandmade          Boolean             @default(true)
+  productionTime      String? // e.g. "Made to order: 3-5 business days"
+  variationDisclaimer String? // e.g. "Handcrafted: slight variations in stitch and tone reflect handmade character."
+  shippingNotes       String?
+  seoTitle            String?
+  seoDescription      String?
+  isFeatured          Boolean             @default(false)
+  images              ProductImage[]
+  variants            ProductVariant[]
+  wishlistItems       WishlistItem[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+}
+
+model ProductCollection {
+  id           String     @id @default(cuid())
+  productId    String
+  collectionId String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([productId, collectionId])
+}
+
+model ProductVariant {
+  id             String      @id @default(cuid())
+  productId      String
+  product        Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name           String // e.g. "Standard A6 Sheet" or "Sage Green / Small"
+  sku            String      @unique
+  price          Int // stored in minor units: 1800 = $18.00
+  compareAtPrice Int?
+  stock          Int         @default(0)
+  weight         Int? // weight in grams
+  optionValues   String? // JSON string of options { "Color": "Sage" }
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Cart {
+  id                String     @id @default(cuid())
+  userId            String?
+  user              User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestSessionToken String?    @unique
+  discountCode      String?
+  items             CartItem[]
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String         @id @default(cuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int            @default(1)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([cartId, variantId])
+}
+
+model Order {
+  id                     String      @id @default(cuid())
+  orderNumber            String      @unique
+  userId                 String?
+  user                   User?       @relation(fields: [userId], references: [id])
+  guestEmail             String?
+  guestName              String?
+  guestPhone             String?
+  status                 String      @default("Pending Confirmation") // "Pending Confirmation", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"
+  emailNotificationStatus String     @default("PENDING") // PENDING, SENT, FAILED
+  emailNotificationError String?
+  totalAmount            Int
+  subtotalAmount         Int
+  discountAmount         Int         @default(0)
+  discountCodeUsed       String?
+  shippingAmount         Int         @default(0)
+  taxAmount              Int         @default(0)
+  currency               String      @default("INR")
+  shippingAddress        String // JSON string
+  billingAddress         String? // JSON string
+  shippingMethodName     String?
+  trackingNumber         String?
+  trackingCarrier        String?
+  customerNotes          String?
+  paidAt                 DateTime?
+  shippedAt              DateTime?
+  items                  OrderItem[]
+  payments               Payment[]
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+}
+
+model OrderItem {
+  id                   String          @id @default(cuid())
+  orderId              String
+  order                Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId            String?
+  variant              ProductVariant? @relation(fields: [variantId], references: [id])
+  productTitleSnapshot String
+  variantNameSnapshot  String
+  skuSnapshot          String
+  priceSnapshot        Int
+  quantity             Int
+  imageSnapshot        String?
+  createdAt            DateTime        @default(now())
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider        String // "stripe" or "mock_test"
+  paymentIntentId String?  @unique
+  status          String   @default("PENDING") // PENDING, SUCCEEDED, FAILED, REFUNDED
+  amount          Int
+  currency        String   @default("USD")
+  rawPayload      String? // JSON string
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ShippingZone {
+  id        String         @id @default(cuid())
+  name      String
+  countries String // JSON array e.g. ["US"] or ["*"]
+  isActive  Boolean        @default(true)
+  rates     ShippingRate[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model ShippingRate {
+  id               String       @id @default(cuid())
+  zoneId           String
+  zone             ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  minAmount        Int?
+  maxAmount        Int?
+  rate             Int // minor units e.g. 450 = $4.50
+  estimatedDaysMin Int?
+  estimatedDaysMax Int?
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model DiscountCode {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  description  String?
+  discountType String // PERCENTAGE, FIXED_AMOUNT, FREE_SHIPPING
+  value        Int // 15 = 15% or 500 = $5.00
+  minSpend     Int?
+  maxUses      Int?
+  currentUses  Int       @default(0)
+  startDate    DateTime?
+  endDate      DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model NewsletterSubscriber {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  status            String    @default("CONFIRMED") // PENDING, CONFIRMED, UNSUBSCRIBED
+  confirmationToken String?
+  confirmedAt       DateTime?
+  createdAt         DateTime  @default(now())
+}
+
+model SiteSettings {
+  id                    String   @id @default("default")
+  storeName             String   @default("Mio Studio")
+  tagline               String   @default("small things that make everything a little more beautiful")
+  announcementText      String   @default("Handmade with care — free domestic studio delivery on orders over $45")
+  announcementLink      String?  @default("/shop")
+  announcementEnabled   Boolean  @default(true)
+  currency              String   @default("USD")
+  currencySymbol        String   @default("$")
+  taxInclusive          Boolean  @default(true)
+  contactEmail          String   @default("hello@miostudio.craft")
+  whatsappNumber        String?  @default("+15035550192")
+  studioAddress         String?  @default("Studio 4B, Artisan Alley, Portland, OR")
+  instagramUrl          String?  @default("https://instagram.com/miostudio")
+  pinterestUrl          String?  @default("https://pinterest.com/miostudio")
+  heroHeadline          String   @default("small things that make everything a little more beautiful")
+  heroSubhead           String   @default("Thoughtfully designed stickers, tactile keyrings, and small-batch handmade crochet objects crafted for everyday wonder.")
+  brandStatement        String   @default("We believe the objects you carry, clip to your bag, or tuck into a notebook should carry warmth and personal intention. Every piece is designed or crocheted in small studio batches.")
+  editorialStoryTitle   String   @default("Slow Craft & Conscious Threads")
+  editorialStoryExcerpt String   @default("From hand-spun organic cotton yarns to water-resistant matte sticker vinyl, each texture is selected to age gracefully and bring daily joy.")
+  makerStory            String   @default("Mio Studio began as a personal sketchbook practice on an old wooden desk. Today, each charm, sticker sheet, and crochet pouch is still shaped by hand with patience and small-scale care.")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  content     String
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String?
+  user        User?    @relation(fields: [adminUserId], references: [id])
+  action      String
+  entityType  String
+  entityId    String?
+  details     String?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
+
+model WishlistItem {
+  id             String   @id @default(cuid())
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guestSessionId String?
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, productId])
+}

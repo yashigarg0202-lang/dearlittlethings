@@ -1,0 +1,229 @@
+/* ==========================================================================
+   dear little things — Design Tokens & Global Styles
+   Editorial, Boutique, Nostalgic, Playful Small-Batch Aesthetic
+   ========================================================================== */
+
+:root {
+  /* Typography Roles */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-accent: 'Caveat', cursive;
+
+  /* Surfaces & Backgrounds - NEVER pure #FFFFFF */
+  --background: #FAF7F2;         /* Warm Ivory / Cream */
+  --foreground: #3A2B24;         /* Deep Warm Espresso Charcoal */
+  --card: #F5EFEB;               /* Warm Paper Surface */
+  --card-foreground: #3A2B24;
+  --popover: #FAF7F2;
+  --popover-foreground: #3A2B24;
+
+  /* Artisanal Palette Tokens */
+  --primary: #A85A44;            /* Muted Terracotta / Warm Clay Red */
+  --primary-foreground: #FAF7F2; /* Cream text on primary */
+  --secondary: #EDE4DA;          /* Muted blush / linen */
+  --secondary-foreground: #3A2B24;
+  --muted: #F0EAE2;              /* Soft neutral tint */
+  --muted-foreground: #7C6D63;   /* Warm medium gray-brown */
+  --accent: #D9826C;             /* Soft terracotta */
+  --accent-foreground: #3A2B24;
+  --destructive: #B33927;
+  --destructive-foreground: #FAF7F2;
+
+  /* Hairline Borders & Inputs */
+  --border: #E2D7CC;             /* Subtle warm hairline */
+  --input: #E2D7CC;
+  --ring: #A85A44;
+  --radius: 0.25rem;
+
+  /* Legacy CSS Variable Bridges */
+  --bg-primary: var(--background);
+  --bg-secondary: var(--secondary);
+  --bg-surface: var(--card);
+  --bg-elevated: #EFE6DC;
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-muted: #8F8075;
+  --accent-terracotta: var(--primary);
+  --border-hairline: var(--border);
+  --border-subtle: var(--border);
+}
+
+/* CSS Reset & Defaults */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--background);
+  color: var(--foreground);
+  line-height: 1.6;
+  min-height: 100vh;
+  position: relative;
+  /* Signature 4px micro-dot tactile background from reference */
+  background-image: radial-gradient(rgba(58, 43, 36, 0.04) 1px, transparent 1px);
+  background-size: 4px 4px;
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--foreground);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+em {
+  color: var(--primary);
+  font-style: italic;
+  font-family: inherit;
+}
+
+p {
+  color: var(--muted-foreground);
+  line-height: 1.65;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+/* Signature Reference Utilities */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-accent {
+  font-family: var(--font-accent);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* Ink Pill Button (.btn-ink from reference) */
+.btn-ink {
+  letter-spacing: 0.08em;
+  background-color: var(--foreground);
+  color: var(--background);
+  border-radius: 9999px;
+  padding: 0.9rem 2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: lowercase;
+  transition: background-color 0.3s ease, transform 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+
+.btn-ink:hover {
+  background-color: var(--primary);
+  color: var(--background);
+}
+
+.btn-ink:active {
+  transform: scale(0.98);
+}
+
+.btn-ink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Secondary Button */
+.btn-outline {
+  letter-spacing: 0.05em;
+  background-color: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0.8rem 1.8rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-outline:hover {
+  border-color: var(--foreground);
+  background-color: var(--secondary);
+}
+
+/* Paper Frame for Product Images (.paper-frame from reference) */
+.paper-frame {
+  background-color: var(--card);
+  box-shadow: 0 1px 0 var(--border), 0 18px 40px -24px rgba(58, 43, 36, 0.35);
+  border-radius: 2px;
+  position: relative;
+}
+
+/* Quiet Link with Underline Hover Transition (.link-quiet from reference) */
+.link-quiet {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 0.3s ease, color 0.2s ease;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link-quiet:hover {
+  background-size: 100% 1px;
+}
+
+/* Form inputs & controls */
+input, textarea, select {
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--foreground);
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(168, 90, 68, 0.15);
+}
+
+/* Container */
+.container {
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Responsive Grid Staggering for 3-Column Display */
+@media (min-width: 768px) {
+  .stagger-col-2 {
+    margin-top: 4rem;
+  }
+}
