@@ -3,6 +3,8 @@ import type { NewsletterSubscriber } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminSubscribersPage() {
   const subscribers: NewsletterSubscriber[] = await prisma.newsletterSubscriber.findMany({
     orderBy: { createdAt: 'desc' },
