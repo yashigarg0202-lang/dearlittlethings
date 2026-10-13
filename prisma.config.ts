@@ -13,9 +13,7 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    // Fall back to the local SQLite file so `prisma generate` (run on install)
-    // works in environments where DATABASE_URL isn't set, such as CI builds.
-    url: process.env.DATABASE_URL ?? "file:./dev.db",
+    url: process.env.DATABASE_URL || "",
     directUrl: process.env.DIRECT_URL,
   },
 });

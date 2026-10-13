@@ -1,6 +1,8 @@
 import React from 'react';
 import type { NewsletterSubscriber } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 
 export default async function AdminSubscribersPage() {
