@@ -3,6 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { formatINR } from '@/lib/currency';
 
 interface MockGatewayOrderItem {
   id: string;
@@ -138,7 +139,7 @@ export default function MockGatewayPage({ searchParams }: MockGatewayProps) {
             Simulated Test Checkout
           </h1>
           <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-            Order No: <strong>{order.orderNumber}</strong> &bull; Total: <strong>${(order.totalAmount / 100).toFixed(2)} USD</strong>
+            Order No: <strong>{order.orderNumber}</strong> &bull; Total: <strong>{formatINR(order.totalAmount)}</strong>
           </p>
         </div>
 
@@ -155,7 +156,7 @@ export default function MockGatewayPage({ searchParams }: MockGatewayProps) {
               {order.items.map((i: MockGatewayOrderItem) => (
                 <li key={i.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span>{i.quantity} × {i.productTitleSnapshot} ({i.variantNameSnapshot})</span>
-                  <span>${((i.priceSnapshot * i.quantity) / 100).toFixed(2)}</span>
+                  <span>{formatINR(i.priceSnapshot * i.quantity)}</span>
                 </li>
               ))}
             </ul>
@@ -169,7 +170,7 @@ export default function MockGatewayPage({ searchParams }: MockGatewayProps) {
             className="btn-primary"
             style={{ width: '100%', padding: '0.85rem', fontSize: '1rem' }}
           >
-            {processing ? 'Confirming payment via webhook...' : 'Simulate Successful Payment ($' + (order.totalAmount / 100).toFixed(2) + ')'}
+            {processing ? 'Confirming payment via webhook...' : `Simulate Successful Payment (${formatINR(order.totalAmount)})`}
           </button>
 
           <Link

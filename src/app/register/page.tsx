@@ -90,7 +90,7 @@ export default function RegisterPage() {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Elena Rostova"
+              placeholder="Enter your name"
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -109,7 +109,7 @@ export default function RegisterPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="Enter your email"
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -128,7 +128,7 @@ export default function RegisterPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Enter your password"
               style={{
                 width: '100%',
                 padding: '0.75rem',

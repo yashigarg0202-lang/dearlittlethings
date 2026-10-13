@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { formatINR } from '@/lib/currency';
 
 export interface AdminDiscountItem {
   id: string;
@@ -102,7 +103,7 @@ export default function AdminDiscountsClient({ initialDiscounts }: AdminDiscount
               </div>
               <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.6rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 <span>
-                  Value: {d.discountType === 'PERCENTAGE' ? `${d.value}% off` : `$${(d.value / 100).toFixed(2)} off`}
+                  Value: {d.discountType === 'PERCENTAGE' ? `${d.value}% off` : `${formatINR(d.value)} off`}
                 </span>
                 <span>
                   Redemptions: {d.currentUses} {d.maxUses ? `/ ${d.maxUses}` : ''}
@@ -157,13 +158,13 @@ export default function AdminDiscountsClient({ initialDiscounts }: AdminDiscount
                 style={{ width: '100%', padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-hairline)' }}
               >
                 <option value="PERCENTAGE">Percentage (%)</option>
-                <option value="FIXED_AMOUNT">Fixed Amount ($)</option>
+                <option value="FIXED_AMOUNT">Fixed Amount (₹)</option>
               </select>
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                Value ({discountType === 'PERCENTAGE' ? '%' : '$'}) *
+                Value ({discountType === 'PERCENTAGE' ? '%' : '₹'}) *
               </label>
               <input
                 type="number"
@@ -180,7 +181,7 @@ export default function AdminDiscountsClient({ initialDiscounts }: AdminDiscount
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                Min Spend ($)
+                Min Spend (₹)
               </label>
               <input
                 type="number"

@@ -93,7 +93,7 @@ export default function CheckoutPage() {
   const items: CartItemData[] = cart?.items || [];
 
   const selectedRate = shippingRates.find((r: ShippingRateOption) => r.id === selectedRateId);
-  let shippingCost = selectedRate ? selectedRate.rate : 0;
+  let shippingCost = selectedRate ? selectedRate.rate : (shippingRates[0]?.rate ?? 9900);
   if (selectedRate && selectedRate.minAmount !== null && subtotal >= selectedRate.minAmount) {
     shippingCost = 0;
   }
@@ -745,33 +745,60 @@ export default function CheckoutPage() {
 
             {/* Item list */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.75rem' }}>
-              {items.map((item: CartItemData) => (
-                <div
-                  key={item.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'baseline',
-                    fontSize: '0.875rem',
-                    paddingBottom: '0.75rem',
-                    borderBottom: '1px solid var(--border)',
-                  }}
-                >
-                  <div>
-                    <strong style={{ color: 'var(--foreground)' }}>
-                      {item.quantity} &times; {item.variant.product.title}
-                    </strong>
-                    {item.variant.name && item.variant.name !== 'Default' && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
-                        {item.variant.name}
+              {items.map((item: CartItemData) => {
+                const prodImages = item.variant?.product?.images || [];
+                const image = prodImages.find((img) => (img as { isPrimary?: boolean }).isPrimary)?.url || prodImages[0]?.url;
+
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '1rem',
+                      fontSize: '0.875rem',
+                      paddingBottom: '0.75rem',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {image && (
+                        <div
+                          style={{
+                            width: '40px',
+                            height: '50px',
+                            borderRadius: '3px',
+                            overflow: 'hidden',
+                            backgroundColor: 'var(--secondary)',
+                            flexShrink: 0,
+                            border: '1px solid var(--border)',
+                          }}
+                        >
+                          <img
+                            src={image}
+                            alt={item.variant.product.title}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <strong style={{ color: 'var(--foreground)' }}>
+                          {item.quantity} &times; {item.variant.product.title}
+                        </strong>
+                        {item.variant.name && item.variant.name !== 'Default' && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--muted-foreground)' }}>
+                            {item.variant.name}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    <span style={{ fontWeight: 500, color: 'var(--foreground)', whiteSpace: 'nowrap' }}>
+                      {formatINR(item.variant.price * item.quantity)}
+                    </span>
                   </div>
-                  <span style={{ fontWeight: 500, color: 'var(--foreground)' }}>
-                    {formatINR(item.variant.price * item.quantity)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Discount Code Form */}

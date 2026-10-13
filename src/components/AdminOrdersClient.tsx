@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { formatINR } from '@/lib/currency';
 
 export interface AdminOrderItemSnapshot {
   id: string;
@@ -145,7 +146,7 @@ export default function AdminOrdersClient({ initialOrders }: AdminOrdersClientPr
                   </span>
                 </td>
                 <td style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>
-                  ${(o.totalAmount / 100).toFixed(2)}
+                  {formatINR(o.totalAmount)}
                 </td>
                 <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
                   <button
@@ -249,13 +250,13 @@ export default function AdminOrdersClient({ initialOrders }: AdminOrdersClientPr
                 {selectedOrder.items.map((i: AdminOrderItemSnapshot) => (
                   <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>{i.quantity} &times; {i.productTitleSnapshot} ({i.variantNameSnapshot})</span>
-                    <span>${((i.priceSnapshot * i.quantity) / 100).toFixed(2)}</span>
+                    <span>{formatINR(i.priceSnapshot * i.quantity)}</span>
                   </div>
                 ))}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-hairline)', paddingTop: '0.5rem', marginTop: '0.5rem', fontWeight: 600 }}>
                 <span>Grand Total</span>
-                <span>${(selectedOrder.totalAmount / 100).toFixed(2)} USD</span>
+                <span>{formatINR(selectedOrder.totalAmount)}</span>
               </div>
             </div>
 

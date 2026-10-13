@@ -41,3 +41,12 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Test order notification outputs & local database artifacts
+outbox/
+*.bak
+*.wal
+*.shm
+*.db-wal
+*.db-shm
+/dev.db

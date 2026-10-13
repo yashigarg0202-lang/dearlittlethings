@@ -2,6 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth';
+import { formatINR } from '@/lib/currency';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +16,7 @@ type AdminProductWithRelations = Prisma.ProductGetPayload<{
 }>;
 
 export default async function AdminProductsPage() {
+  await requireAdmin();
   const products: AdminProductWithRelations[] = await prisma.product.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
@@ -83,9 +86,32 @@ export default async function AdminProductsPage() {
                   }}
                 >
                   <td style={{ padding: '0.85rem 1rem' }}>
-                    <strong>{p.title}</strong>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      slug: <code>{p.slug}</code>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {p.images[0]?.url && (
+                        <div
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            backgroundColor: 'var(--muted)',
+                            flexShrink: 0,
+                            border: '1px solid var(--border)',
+                          }}
+                        >
+                          <img
+                            src={p.images[0].url}
+                            alt={p.title}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <strong>{p.title}</strong>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                          slug: <code>{p.slug}</code>
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td style={{ padding: '0.85rem 1rem' }}>{p.category.name}</td>
@@ -103,8 +129,8 @@ export default async function AdminProductsPage() {
                     </span>
                   </td>
                   <td style={{ padding: '0.85rem 1rem' }}>
-                    ${(minPrice / 100).toFixed(2)}
-                    {maxPrice > minPrice && ` – $${(maxPrice / 100).toFixed(2)}`}
+                    {formatINR(minPrice)}
+                    {maxPrice > minPrice && ` – ${formatINR(maxPrice)}`}
                   </td>
                   <td style={{ padding: '0.85rem 1rem' }}>
                     <span style={{ fontWeight: totalStock <= 5 ? 600 : 400, color: totalStock <= 5 ? 'var(--accent-terracotta)' : 'inherit' }}>
@@ -114,13 +140,25 @@ export default async function AdminProductsPage() {
                   <td style={{ padding: '0.85rem 1rem' }}>
                     {p.isHandmade ? 'Yes' : 'No'}
                   </td>
-                  <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
+                  <td style={{ padding: '0.85rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <Link
+                      href={`/admin/products/${p.id}/edit`}
+                      style={{
+                        fontSize: '0.85rem',
+                        color: 'var(--accent-terracotta)',
+                        marginRight: '1rem',
+                        fontWeight: 600,
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      Edit
+                    </Link>
                     <Link
                       href={`/product/${p.slug}`}
                       target="_blank"
-                      style={{ fontSize: '0.85rem', color: 'var(--accent-terracotta)', marginRight: '1rem', textDecoration: 'underline' }}
+                      style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'underline' }}
                     >
-                      View Live
+                      View Live &nearr;
                     </Link>
                   </td>
                 </tr>

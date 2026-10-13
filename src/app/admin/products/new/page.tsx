@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import ProductImageUploader, { UploadedImageItem } from '@/components/ProductImageUploader';
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -24,13 +25,14 @@ export default function NewProductPage() {
   const [isHandmade, setIsHandmade] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
 
-  // Variant & Image
+  // Variant details
   const [variantName, setVariantName] = useState('Standard');
   const [sku, setSku] = useState('');
-  const [priceDollars, setPriceDollars] = useState('12.00');
+  const [priceDollars, setPriceDollars] = useState('499.00');
   const [stock, setStock] = useState('20');
-  const [imageUrl, setImageUrl] = useState('/placeholders/product-stickers-1.svg');
-  const [imageAlt, setImageAlt] = useState('');
+
+  // Product Images state (direct uploads + reordering + primary selection)
+  const [images, setImages] = useState<UploadedImageItem[]>([]);
 
   useEffect(() => {
     async function loadCategories() {
@@ -62,9 +64,10 @@ export default function NewProductPage() {
     const generatedSku =
       val
         .split(' ')
+        .filter(Boolean)
         .map((w) => w.slice(0, 3).toUpperCase())
         .join('-') + '-01';
-    setSku(generatedSku);
+    setSku(generatedSku || 'SKU-01');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,6 +76,12 @@ export default function NewProductPage() {
     setLoading(true);
 
     try {
+      if (images.length === 0) {
+        throw new Error('Please upload at least one product image.');
+      }
+
+      const primaryImg = images.find((i) => i.isPrimary) || images[0];
+
       const res = await fetch('/api/admin/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,8 +99,14 @@ export default function NewProductPage() {
           variationDisclaimer: variationDisclaimer.trim(),
           status,
           isFeatured,
-          imageUrl: imageUrl.trim(),
-          imageAlt: imageAlt.trim() || title.trim(),
+          images: images.map((img, idx) => ({
+            url: img.url,
+            altText: img.altText || title.trim(),
+            sortOrder: idx,
+            isPrimary: img.isPrimary,
+          })),
+          imageUrl: primaryImg.url,
+          imageAlt: primaryImg.altText || title.trim(),
           variantName: variantName.trim(),
           sku: sku.trim(),
           priceDollars: parseFloat(priceDollars),
@@ -114,7 +129,7 @@ export default function NewProductPage() {
   };
 
   return (
-    <div style={{ maxWidth: '820px' }}>
+    <div style={{ maxWidth: '860px', margin: '0 auto', paddingBottom: '3rem' }}>
       <div style={{ borderBottom: '1px solid var(--border-hairline)', paddingBottom: '1.25rem', marginBottom: '2rem' }}>
         <Link href="/admin/products" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           &larr; Back to Products
@@ -123,7 +138,7 @@ export default function NewProductPage() {
           Craft New Studio Product
         </h1>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-          Create a new product with custom variants, stock limits, and tactile attributes.
+          Upload photos directly from your device, configure editions, stock, and artisanal details.
         </p>
       </div>
 
@@ -131,10 +146,11 @@ export default function NewProductPage() {
         <div
           style={{
             padding: '1rem',
-            backgroundColor: 'var(--accent-terracotta-soft)',
-            border: '1px solid var(--accent-terracotta)',
-            color: 'var(--accent-terracotta)',
+            backgroundColor: 'var(--accent-terracotta-soft, #fdf0ed)',
+            border: '1px solid var(--accent-terracotta, #a85a44)',
+            color: 'var(--accent-terracotta, #a85a44)',
             marginBottom: '1.5rem',
+            borderRadius: '4px',
           }}
         >
           {error}
@@ -142,8 +158,8 @@ export default function NewProductPage() {
       )}
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        {/* Core Info */}
-        <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', padding: '1.75rem' }}>
+        {/* 1. Core Identity */}
+        <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', padding: '1.75rem', borderRadius: '4px' }}>
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem', marginBottom: '1rem' }}>
             1. Core Identity
           </h2>
@@ -210,22 +226,40 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* Initial Variant & Pricing */}
-        <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', padding: '1.75rem' }}>
+        {/* 2. Direct Product Image Uploads */}
+        <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', padding: '1.75rem', borderRadius: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem' }}>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem', margin: 0 }}>
+              2. Product Visuals & Gallery
+            </h2>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Direct upload from your computer
+            </span>
+          </div>
+
+          <ProductImageUploader
+            images={images}
+            onChange={setImages}
+            productTitle={title}
+          />
+        </div>
+
+        {/* 3. Initial Variant & Pricing */}
+        <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', padding: '1.75rem', borderRadius: '4px' }}>
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem', marginBottom: '1rem' }}>
-            2. Initial Variant & Stock Limits
+            3. Initial Edition & Inventory
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                Variant Name *
+                Edition / Variant Name *
               </label>
               <input
                 type="text"
                 required
                 value={variantName}
                 onChange={(e) => setVariantName(e.target.value)}
-                placeholder="Standard / 10m Roll"
+                placeholder="Standard / Original"
                 style={{ width: '100%', padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-hairline)' }}
               />
             </div>
@@ -245,7 +279,7 @@ export default function NewProductPage() {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                Price in USD ($) *
+                Price in INR (₹) *
               </label>
               <input
                 type="number"
@@ -260,7 +294,7 @@ export default function NewProductPage() {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                Stock Count *
+                Stock Units *
               </label>
               <input
                 type="number"
@@ -274,41 +308,12 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* Media & Handmade Details */}
-        <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', padding: '1.75rem' }}>
+        {/* 4. Handmade Attributes */}
+        <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-hairline)', padding: '1.75rem', borderRadius: '4px' }}>
           <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem', marginBottom: '1rem' }}>
-            3. Image & Handmade Attributes
+            4. Artisanal Attributes
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                  Image URL / Placeholder *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  style={{ width: '100%', padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-hairline)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                  Image Descriptive Alt Text *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={imageAlt}
-                  onChange={(e) => setImageAlt(e.target.value)}
-                  placeholder="e.g. Natural washi roll with pressed botanical leaves"
-                  style={{ width: '100%', padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-hairline)' }}
-                />
-              </div>
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
@@ -318,7 +323,7 @@ export default function NewProductPage() {
                   type="text"
                   value={materials}
                   onChange={(e) => setMaterials(e.target.value)}
-                  placeholder="e.g. Japanese washi paper, natural rubber adhesive"
+                  placeholder="e.g. Japanese washi paper, archival ink"
                   style={{ width: '100%', padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-hairline)' }}
                 />
               </div>
@@ -331,10 +336,23 @@ export default function NewProductPage() {
                   type="text"
                   value={dimensions}
                   onChange={(e) => setDimensions(e.target.value)}
-                  placeholder="e.g. 15mm width x 10m length"
+                  placeholder="e.g. 50mm x 75mm die-cut"
                   style={{ width: '100%', padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-hairline)' }}
                 />
               </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
+                Care Instructions
+              </label>
+              <input
+                type="text"
+                value={careInstructions}
+                onChange={(e) => setCareInstructions(e.target.value)}
+                placeholder="e.g. Wipe gently with dry cloth. Avoid prolonged direct sun."
+                style={{ width: '100%', padding: '0.65rem 0.85rem', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-hairline)' }}
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '2rem', marginTop: '0.5rem' }}>

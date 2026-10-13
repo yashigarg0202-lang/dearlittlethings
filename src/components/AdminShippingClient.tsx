@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { formatINR } from '@/lib/currency';
 
 export interface AdminShippingRateItem {
   id: string;
@@ -123,10 +124,10 @@ export default function AdminShippingClient({ initialZones }: AdminShippingClien
                       {r.description && <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{r.description}</div>}
                     </div>
                     <div style={{ textAlign: 'right', fontWeight: 600 }}>
-                      {r.rate === 0 ? 'Free' : `$${(r.rate / 100).toFixed(2)}`}
+                      {r.rate === 0 ? 'Free' : formatINR(r.rate)}
                       {r.minAmount && (
                         <div style={{ fontSize: '0.72rem', color: 'var(--accent-sage)', fontWeight: 400 }}>
-                          (Orders over ${(r.minAmount / 100).toFixed(2)})
+                          (Orders over ${formatINR(r.minAmount)})
                         </div>
                       )}
                     </div>
@@ -191,7 +192,7 @@ export default function AdminShippingClient({ initialZones }: AdminShippingClien
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                Rate Cost ($) *
+                Rate Cost (₹) *
               </label>
               <input
                 type="number"
@@ -206,7 +207,7 @@ export default function AdminShippingClient({ initialZones }: AdminShippingClien
 
             <div>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.3rem' }}>
-                Free Above Threshold ($)
+                Free Above Threshold (₹)
               </label>
               <input
                 type="number"

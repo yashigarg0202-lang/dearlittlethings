@@ -24,7 +24,7 @@ export default function Header() {
           fontFamily: 'var(--font-body)',
         }}
       >
-        <span>small things that make everything a little more beautiful ✿ free delivery on orders over ₹499</span>
+        <span>small things that make everything a little more beautiful ✿ standard delivery ₹99 per order</span>
       </div>
 
       {/* Main Header */}

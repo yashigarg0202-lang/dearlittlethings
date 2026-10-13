@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { PlusIcon, MinusIcon } from '@/icons';
+import { formatINR } from '@/lib/currency';
 
 export default function CartPage() {
   const {
@@ -24,8 +25,8 @@ export default function CartPage() {
   const discountAmount = cart?.discountAmount || 0;
   const total = cart?.total || 0;
   const items = cart?.items || [];
-  const freeShippingThreshold = 4500; // $45.00
-  const freeShippingRemaining = Math.max(0, freeShippingThreshold - subtotal);
+  const standardDeliveryFee = 9900; // ₹99 standard delivery fee
+  const orderTotal = items.length > 0 ? Math.max(0, total + standardDeliveryFee) : 0;
 
   const handleApplyDiscount = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +90,7 @@ export default function CartPage() {
         >
           {/* Items List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {/* Free shipping progress */}
+            {/* Delivery notice */}
             <div
               style={{
                 padding: '0.85rem 1.25rem',
@@ -98,15 +99,9 @@ export default function CartPage() {
                 fontSize: '0.88rem',
               }}
             >
-              {freeShippingRemaining > 0 ? (
-                <span>
-                  Add <strong>${(freeShippingRemaining / 100).toFixed(2)}</strong> more to receive complimentary domestic studio delivery.
-                </span>
-              ) : (
-                <span style={{ color: 'var(--accent-sage)', fontWeight: 600 }}>
-                  You have qualified for complimentary domestic studio delivery.
-                </span>
-              )}
+              <span>
+                Standard domestic studio delivery: <strong>{formatINR(standardDeliveryFee)}</strong> per order.
+              </span>
             </div>
 
             {items.map((item) => (
@@ -184,7 +179,7 @@ export default function CartPage() {
 
                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                   <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                    ${((item.variant.price * item.quantity) / 100).toFixed(2)}
+                    {formatINR(item.variant.price * item.quantity)}
                   </span>
                   <button
                     onClick={() => removeItem(item.id)}
@@ -270,19 +265,19 @@ export default function CartPage() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Item Subtotal</span>
-              <span>${(subtotal / 100).toFixed(2)}</span>
+              <span>{formatINR(subtotal)}</span>
             </div>
 
             {discountAmount > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.95rem', color: 'var(--accent-terracotta)' }}>
                 <span>Discount</span>
-                <span>-${(discountAmount / 100).toFixed(2)}</span>
+                <span>-{formatINR(discountAmount)}</span>
               </div>
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.95rem' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Shipping</span>
-              <span>Calculated at checkout</span>
+              <span style={{ color: 'var(--text-secondary)' }}>Standard Delivery</span>
+              <span>{formatINR(standardDeliveryFee)}</span>
             </div>
 
             <div
@@ -297,8 +292,8 @@ export default function CartPage() {
                 marginBottom: '1.5rem',
               }}
             >
-              <span>Subtotal</span>
-              <span>${(total / 100).toFixed(2)} USD</span>
+              <span>Total</span>
+              <span>{formatINR(orderTotal)}</span>
             </div>
 
             <Link

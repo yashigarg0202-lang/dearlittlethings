@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
+import { formatINR } from '@/lib/currency';
 import { getOrCreateCartId, getCartCalculations } from '@/lib/cart';
 import { checkRateLimit } from '@/lib/rate-limit';
 
@@ -43,9 +44,8 @@ export async function POST(req: NextRequest) {
     const cartCalc = await getCartCalculations(cartId);
 
     if (discount.minSpend && cartCalc.subtotal < discount.minSpend) {
-      const minSpendFormatted = (discount.minSpend / 100).toFixed(2);
       return NextResponse.json(
-        { error: `This code requires a minimum spend of $${minSpendFormatted}` },
+        { error: `This code requires a minimum spend of ${formatINR(discount.minSpend)}` },
         { status: 400 }
       );
     }

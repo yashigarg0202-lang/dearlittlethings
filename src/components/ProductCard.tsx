@@ -10,7 +10,7 @@ export interface ProductCardProps {
   title: string;
   slug: string;
   description?: string | null;
-  images: { url: string; altText: string }[];
+  images: { url: string; altText: string; isPrimary?: boolean }[];
   variants: {
     id: string;
     price: number;
@@ -36,7 +36,7 @@ export default function ProductCard({
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
 
-  const primaryImage = images[0] || {
+  const primaryImage = images.find((img) => img.isPrimary) || images[0] || {
     url: '/placeholders/product-stickers-1.svg',
     altText: title,
   };

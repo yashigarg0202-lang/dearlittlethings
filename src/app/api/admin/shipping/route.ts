@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         action: 'SHIPPING_RATE_CREATE',
         entityType: 'SHIPPING_RATE',
         entityId: rate.id,
-        details: `Created shipping rate "${name}" ($${rateDollars.toFixed(2)})`,
+        details: `Created shipping rate "${name}" (₹${rateDollars.toFixed(2)})`,
       },
     });
 

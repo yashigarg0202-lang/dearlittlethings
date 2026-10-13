@@ -125,22 +125,13 @@ export default function ShippingDeliveryPage() {
               }}
             >
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: 0 }}>
-                <li style={{ borderBottom: '1px solid var(--border-hairline)', paddingBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: '0.95rem' }}>
-                    <span>Standard Studio Tracked Mail (USPS Ground)</span>
-                    <span>$4.50 (Free over $45)</span>
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    Estimated delivery: 3–5 business days after dispatch. Full tracking link provided via WhatsApp / Email.
-                  </div>
-                </li>
                 <li>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, fontSize: '0.95rem' }}>
-                    <span>Studio Priority Tracked Dispatch</span>
-                    <span>$9.00</span>
+                    <span>Standard Studio Delivery</span>
+                    <span>₹99.00 per order</span>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    Estimated delivery: 1–3 business days after dispatch via Priority Mail.
+                    Estimated delivery: 3–5 business days after dispatch. Carefully packed with rigid cardboard protection. Tracking updates provided via WhatsApp / Email.
                   </div>
                 </li>
               </ul>

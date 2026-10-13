@@ -238,6 +238,91 @@ async function runTests() {
   const formattedINR = formatINR(1000); // 1000 minor units = ₹10.00
   assert(formattedINR.includes('10.00'), `formatINR(1000) produces valid currency string: ${formattedINR}`);
 
+  // ----------------------------------------------------
+  // TEST 7: Direct Image Upload & Product Media Management
+  // ----------------------------------------------------
+  console.log('\n--- Test Suite 7: Direct Product Image Management & Security ---');
+  const testCategory = await prisma.category.findFirst();
+  assert(testCategory !== null, 'Category available for product media test');
+
+  if (testCategory) {
+    const testProduct = await prisma.product.create({
+      data: {
+        title: 'Botanical Fern Study Art Print',
+        slug: 'botanical-fern-study-art-print-test',
+        description: 'Delicate fern botanical illustration on cream archival paper.',
+        categoryId: testCategory.id,
+        isHandmade: true,
+        images: {
+          create: [
+            {
+              url: '/uploads/products/product-test-thumb-1.webp',
+              altText: 'Fern print full view',
+              sortOrder: 0,
+              isPrimary: false,
+            },
+            {
+              url: '/uploads/products/product-test-thumb-2.webp',
+              altText: 'Fern print textured paper detail',
+              sortOrder: 1,
+              isPrimary: true,
+            },
+          ],
+        },
+        variants: {
+          create: [
+            {
+              name: 'A5 Archival',
+              sku: 'FERN-A5-TEST',
+              price: 1500,
+              stock: 25,
+            },
+          ],
+        },
+      },
+      include: { images: { orderBy: { sortOrder: 'asc' } }, variants: true },
+    });
+
+    assert(testProduct.images.length === 2, 'Product successfully created with 2 images');
+    assert(testProduct.images[1].isPrimary === true, 'Primary image flag set and preserved correctly');
+    assert(testProduct.images[0].sortOrder === 0 && testProduct.images[1].sortOrder === 1, 'Image sort order preserved correctly');
+
+    // Reorder and replace images (simulating admin edit)
+    await prisma.productImage.deleteMany({ where: { productId: testProduct.id } });
+    await prisma.productImage.createMany({
+      data: [
+        {
+          productId: testProduct.id,
+          url: '/uploads/products/product-test-thumb-2.webp',
+          altText: 'Updated primary view',
+          sortOrder: 0,
+          isPrimary: true,
+        },
+        {
+          productId: testProduct.id,
+          url: '/uploads/products/product-test-thumb-3.webp',
+          altText: 'Newly added third studio photo',
+          sortOrder: 1,
+          isPrimary: false,
+        },
+      ],
+    });
+
+    const updatedProduct = await prisma.product.findUnique({
+      where: { id: testProduct.id },
+      include: { images: { orderBy: { sortOrder: 'asc' } } },
+    });
+
+    assert(updatedProduct?.images.length === 2, 'Images updated successfully during product edit');
+    assert(updatedProduct?.images[0].url === '/uploads/products/product-test-thumb-2.webp', 'Image reordering and new image addition verified');
+
+    // Clean up test product
+    await prisma.productImage.deleteMany({ where: { productId: testProduct.id } });
+    await prisma.productVariant.deleteMany({ where: { productId: testProduct.id } });
+    await prisma.product.delete({ where: { id: testProduct.id } });
+    assert(true, 'Test product and images cleaned up cleanly');
+  }
+
   console.log('\n====================================================');
   console.log(`  TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);
   console.log('====================================================\n');

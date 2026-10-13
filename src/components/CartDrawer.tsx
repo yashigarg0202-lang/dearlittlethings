@@ -185,7 +185,8 @@ export default function CartDrawer() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {items.map((item: CartItemData) => {
-                const image = item.variant?.product?.images?.[0]?.url;
+                const prodImages = item.variant?.product?.images || [];
+                const image = prodImages.find((img) => (img as { isPrimary?: boolean }).isPrimary)?.url || prodImages[0]?.url;
                 const title = item.variant?.product?.title || 'Handmade Item';
                 const variantName = item.variant?.name;
                 const price = item.variant?.price || 0;

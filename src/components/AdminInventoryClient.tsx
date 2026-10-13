@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { formatINR } from '@/lib/currency';
 
 export interface AdminVariantItem {
   id: string;
@@ -104,7 +105,7 @@ export default function AdminInventoryClient({ initialVariants }: AdminInventory
                   <div>{v.name}</div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>SKU: {v.sku}</div>
                 </td>
-                <td style={{ padding: '0.85rem 1rem' }}>${(v.price / 100).toFixed(2)}</td>
+                <td style={{ padding: '0.85rem 1rem' }}>{formatINR(v.price)}</td>
                 <td style={{ padding: '0.85rem 1rem' }}>
                   <span
                     style={{

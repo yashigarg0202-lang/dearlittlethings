@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
+import AdminLogoutButton from '@/components/AdminLogoutButton';
 
 export const metadata = {
   title: 'Studio Admin Portal | Mio Studio',
@@ -54,7 +55,10 @@ export default async function AdminLayout({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.85rem' }}>
-            <span>Logged in as <strong>{user.name || user.email}</strong></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <span>Logged in as <strong>{user.name || user.email}</strong></span>
+              <AdminLogoutButton />
+            </div>
             <Link href="/" target="_blank" style={{ textDecoration: 'underline', color: 'var(--text-secondary)' }}>
               View Live Storefront &rarr;
             </Link>

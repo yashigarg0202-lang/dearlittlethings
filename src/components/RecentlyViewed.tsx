@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { formatINR } from '@/lib/currency';
 
 interface RecentlyViewedItem {
   id: string;
@@ -103,7 +104,7 @@ export default function RecentlyViewed({ currentProductId }: { currentProductId?
               {item.title}
             </span>
             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              ${(item.price / 100).toFixed(2)}
+              {formatINR(item.price)}
             </span>
           </Link>
         ))}

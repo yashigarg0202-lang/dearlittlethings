@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatINR } from '@/lib/currency';
 
 export interface AccountOrderItem {
   id: string;
@@ -69,10 +70,17 @@ export default function AccountDashboardPage() {
     loadAccount();
   }, [router]);
 
+  const [loggingOut, setLoggingOut] = useState(false);
+
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/');
-    router.refresh();
+    try {
+      setLoggingOut(true);
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    } catch (err) {
+      console.error('Logout error:', err);
+      setLoggingOut(false);
+    }
   };
 
   if (loading) {
@@ -126,11 +134,13 @@ export default function AccountDashboardPage() {
             </Link>
           )}
           <button
+            type="button"
             onClick={handleLogout}
+            disabled={loggingOut}
             className="btn-secondary"
-            style={{ fontSize: '0.85rem' }}
+            style={{ fontSize: '0.85rem', cursor: loggingOut ? 'not-allowed' : 'pointer' }}
           >
-            Sign Out
+            {loggingOut ? 'Logging out...' : 'Log out'}
           </button>
         </div>
       </div>
@@ -248,7 +258,7 @@ export default function AccountDashboardPage() {
                         {order.status}
                       </span>
                       <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>
-                        ${(order.totalAmount / 100).toFixed(2)} USD
+                        {formatINR(order.totalAmount)}
                       </span>
                     </div>
                   </div>
@@ -260,7 +270,7 @@ export default function AccountDashboardPage() {
                         <span>
                           {item.quantity} × {item.productTitleSnapshot} ({item.variantNameSnapshot})
                         </span>
-                        <span>${((item.priceSnapshot * item.quantity) / 100).toFixed(2)}</span>
+                        <span>{formatINR(item.priceSnapshot * item.quantity)}</span>
                       </div>
                     ))}
                   </div>

@@ -93,7 +93,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="Enter your email"
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -112,7 +112,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Enter your password"
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -139,22 +139,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <div
-          style={{
-            marginTop: '2rem',
-            paddingTop: '1rem',
-            borderTop: '1px solid var(--border-hairline)',
-            fontSize: '0.78rem',
-            color: 'var(--text-muted)',
-            textAlign: 'center',
-          }}
-        >
-          Studio Demo Accounts:
-          <br />
-          Admin: <code>admin@miostudio.craft</code> (<code>StudioAdmin2026!</code>)
-          <br />
-          Customer: <code>collector@studiojournal.craft</code> (<code>CustomerPass2026!</code>)
-        </div>
+
       </div>
     </div>
   );

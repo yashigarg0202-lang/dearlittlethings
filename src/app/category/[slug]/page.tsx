@@ -6,8 +6,6 @@ import type { Metadata } from 'next';
 import prisma from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
 
-export const dynamic = 'force-dynamic';
-
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ sort?: string }>;

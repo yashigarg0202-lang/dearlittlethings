@@ -64,12 +64,13 @@ export default function ProductDetailClient({
     }
   );
 
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const initialIdx = product.images.findIndex((img) => (img as { isPrimary?: boolean }).isPrimary);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(initialIdx >= 0 ? initialIdx : 0);
   const [quantity, setQuantity] = useState(1);
   const [addedNotice, setAddedNotice] = useState(false);
 
   const images = product.images.length > 0 ? product.images : [
-    { id: '1', url: '/products/diet-coke-sticker.png', altText: product.title },
+    { id: '1', url: '/placeholders/product-stickers-1.svg', altText: product.title },
   ];
 
   const handleAddToCart = async () => {
@@ -126,6 +127,7 @@ export default function ProductDetailClient({
               alt={images[selectedImageIndex]?.altText || product.title}
               fill
               priority
+              unoptimized
               sizes="(max-width: 768px) 100vw, 50vw"
               style={{ objectFit: 'cover' }}
             />
@@ -153,7 +155,7 @@ export default function ProductDetailClient({
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <Image src={img.url} alt={img.altText} fill style={{ objectFit: 'cover' }} />
+                  <Image src={img.url} alt={img.altText} fill unoptimized style={{ objectFit: 'cover' }} />
                 </button>
               ))}
             </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
+import { formatINR } from '@/lib/currency';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,7 +71,7 @@ export default async function AdminDashboardPage() {
             Total Studio Revenue
           </span>
           <div style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', marginTop: '0.3rem' }}>
-            ${(grossSales / 100).toFixed(2)} USD
+            {formatINR(grossSales)}
           </div>
           <span style={{ fontSize: '0.8rem', color: 'var(--accent-sage)' }}>
             From {paidOrders} confirmed orders
@@ -197,7 +198,7 @@ export default async function AdminDashboardPage() {
                       {ord.status}
                     </span>
                     <div style={{ fontWeight: 600 }}>
-                      ${(ord.totalAmount / 100).toFixed(2)}
+                      {formatINR(ord.totalAmount)}
                     </div>
                   </div>
                 </div>

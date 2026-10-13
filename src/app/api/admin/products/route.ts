@@ -3,6 +3,13 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 
+const ProductImageInputSchema = z.object({
+  url: z.string().min(1),
+  altText: z.string().optional(),
+  isPrimary: z.boolean().default(false),
+  sortOrder: z.number().int().default(0),
+});
+
 const CreateProductSchema = z.object({
   title: z.string().min(2),
   slug: z.string().min(2),
@@ -17,6 +24,9 @@ const CreateProductSchema = z.object({
   variationDisclaimer: z.string().optional(),
   status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).default('ACTIVE'),
   isFeatured: z.boolean().default(false),
+  // Multiple images support
+  images: z.array(ProductImageInputSchema).optional(),
+  // Backward compatibility with legacy single image fields
   imageUrl: z.string().optional(),
   imageAlt: z.string().optional(),
   variantName: z.string().min(1),
@@ -60,6 +70,38 @@ export async function POST(req: NextRequest) {
 
     const priceCents = Math.round(data.priceDollars * 100);
 
+    // Prepare images array
+    let imagesToCreate: { url: string; altText: string; sortOrder: number; isPrimary: boolean }[] = [];
+
+    if (data.images && data.images.length > 0) {
+      // Check if any is marked as primary
+      const hasPrimary = data.images.some((img) => img.isPrimary);
+      imagesToCreate = data.images.map((img, idx) => ({
+        url: img.url,
+        altText: img.altText || data.title,
+        sortOrder: img.sortOrder ?? idx,
+        isPrimary: hasPrimary ? !!img.isPrimary : idx === 0,
+      }));
+    } else if (data.imageUrl) {
+      imagesToCreate = [
+        {
+          url: data.imageUrl,
+          altText: data.imageAlt || data.title,
+          sortOrder: 0,
+          isPrimary: true,
+        },
+      ];
+    } else {
+      imagesToCreate = [
+        {
+          url: '/placeholders/product-stickers-1.svg',
+          altText: data.title,
+          sortOrder: 0,
+          isPrimary: true,
+        },
+      ];
+    }
+
     const product = await prisma.product.create({
       data: {
         title: data.title,
@@ -76,14 +118,7 @@ export async function POST(req: NextRequest) {
         status: data.status,
         isFeatured: data.isFeatured,
         images: {
-          create: [
-            {
-              url: data.imageUrl || '/placeholders/product-stickers-1.svg',
-              altText: data.imageAlt || data.title,
-              sortOrder: 1,
-              isPrimary: true,
-            },
-          ],
+          create: imagesToCreate,
         },
         variants: {
           create: [
@@ -99,7 +134,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         variants: true,
-        images: true,
+        images: { orderBy: { sortOrder: 'asc' } },
       },
     });
 
@@ -110,13 +145,16 @@ export async function POST(req: NextRequest) {
         action: 'PRODUCT_CREATE',
         entityType: 'PRODUCT',
         entityId: product.id,
-        details: `Created product "${product.title}" (${product.slug}) with SKU ${data.sku} at $${data.priceDollars.toFixed(2)}`,
+        details: `Created product "${product.title}" (${product.slug}) with ${imagesToCreate.length} image(s), SKU ${data.sku} at ₹${data.priceDollars.toFixed(2)}`,
       },
     });
 
     return NextResponse.json({ success: true, product });
   } catch (error: unknown) {
     console.error('Error creating product:', error);
+    if (error instanceof Error && error.message.includes('Admin access required')) {
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 401 });
+    }
     const message = error instanceof Error ? error.message : 'Failed to create product';
     return NextResponse.json({ error: message }, { status: 500 });
   }

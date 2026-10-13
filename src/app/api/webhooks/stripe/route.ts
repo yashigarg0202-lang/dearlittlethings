@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
           action: 'ORDER_PAYMENT_CONFIRMED',
           entityType: 'ORDER',
           entityId: orderId,
-          details: `Order #${existingOrder.orderNumber} confirmed paid via verified webhook. Total: $${(existingOrder.totalAmount / 100).toFixed(2)}`,
+          details: `Order #${existingOrder.orderNumber} confirmed paid via verified webhook. Total: ₹${(existingOrder.totalAmount / 100).toFixed(2)}`,
         },
       }),
     ]);

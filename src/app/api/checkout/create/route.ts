@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     }
 
     const shippingRateName = shippingRate?.name || 'Standard Studio Delivery';
-    let shippingCost = shippingRate?.rate || 0;
+    let shippingCost = shippingRate?.rate ?? 9900;
 
     // Free delivery check if qualifying amount reached
     if (shippingRate && shippingRate.minAmount !== null && cartCalc.subtotal >= shippingRate.minAmount) {
