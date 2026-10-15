@@ -5,11 +5,11 @@ import type { Metadata } from 'next';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: 'Studio Collections',
-  description: 'Curated thematic groupings of handmade goods from Mio Studio.',
+  title: 'Studio Collections | dear little things',
+  description: 'Curated thematic groupings of handmade goods from dear little things.',
 };
 
 type CollectionWithProducts = Prisma.CollectionGetPayload<{

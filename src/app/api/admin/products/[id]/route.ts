@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
@@ -11,11 +12,21 @@ const ProductImageInputSchema = z.object({
   sortOrder: z.number().int().default(0),
 });
 
+const VariantInputSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1),
+  sku: z.string().min(1),
+  priceDollars: z.number().min(0.5),
+  compareAtPriceDollars: z.number().optional().nullable(),
+  stock: z.number().int().min(0).default(0),
+});
+
 const UpdateProductSchema = z.object({
   title: z.string().min(2),
   slug: z.string().min(2),
-  description: z.string().min(5),
+  description: z.string().min(2),
   categoryId: z.string().min(1),
+  collections: z.array(z.string()).optional(),
   tags: z.string().optional(),
   materials: z.string().optional(),
   dimensions: z.string().optional(),
@@ -25,11 +36,16 @@ const UpdateProductSchema = z.object({
   variationDisclaimer: z.string().optional(),
   status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']).default('ACTIVE'),
   isFeatured: z.boolean().default(false),
+  seoTitle: z.string().optional().nullable(),
+  seoDescription: z.string().optional().nullable(),
   images: z.array(ProductImageInputSchema).optional(),
-  variantName: z.string().min(1),
-  sku: z.string().min(1),
-  priceDollars: z.number().min(0.5),
-  stock: z.number().int().min(0),
+  variants: z.array(VariantInputSchema).optional(),
+  // Legacy single fields
+  variantName: z.string().optional(),
+  sku: z.string().optional(),
+  priceDollars: z.number().optional(),
+  compareAtPriceDollars: z.number().optional().nullable(),
+  stock: z.number().optional(),
 });
 
 interface RouteParams {
@@ -47,6 +63,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         category: true,
         variants: { orderBy: { price: 'asc' } },
         images: { orderBy: { sortOrder: 'asc' } },
+        collections: { include: { collection: true } },
       },
     });
 
@@ -57,10 +74,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true, product });
   } catch (error: unknown) {
     console.error('Error fetching admin product:', error);
-    if (error instanceof Error && error.message.includes('Admin access required')) {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 401 });
-    }
-    const message = error instanceof Error ? error.message : 'Failed request';
+    const message = error instanceof Error ? error.message : 'Failed to fetch product';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -84,7 +98,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
       where: { id },
-      include: { variants: true, images: true },
+      include: { variants: true, images: true, category: true },
     });
 
     if (!existingProduct) {
@@ -101,9 +115,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const priceCents = Math.round(data.priceDollars * 100);
-
-    // Update product & sync images transactionally
+    // Update product & sync relations transactionally
     const updated = await prisma.$transaction(async (tx) => {
       // 1. Update basic product info
       const prod = await tx.product.update({
@@ -122,12 +134,13 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
           variationDisclaimer: data.variationDisclaimer || null,
           status: data.status,
           isFeatured: data.isFeatured,
+          seoTitle: data.seoTitle || null,
+          seoDescription: data.seoDescription || null,
         },
       });
 
       // 2. Sync images if provided
       if (data.images && data.images.length > 0) {
-        // Delete previous images and re-insert to maintain clean ordering & primary flags
         await tx.productImage.deleteMany({
           where: { productId: id },
         });
@@ -144,30 +157,88 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         });
       }
 
-      // 3. Update primary variant or create if none exists
-      if (existingProduct.variants.length > 0) {
-        const firstVariant = existingProduct.variants[0];
-        await tx.productVariant.update({
-          where: { id: firstVariant.id },
-          data: {
-            name: data.variantName,
-            sku: data.sku,
-            price: priceCents,
-            stock: data.stock,
-            optionValues: JSON.stringify({ Option: data.variantName }),
-          },
+      // 3. Sync Collections
+      if (data.collections !== undefined) {
+        await tx.productCollection.deleteMany({
+          where: { productId: id },
         });
-      } else {
-        await tx.productVariant.create({
-          data: {
-            productId: id,
-            name: data.variantName,
-            sku: data.sku,
-            price: priceCents,
-            stock: data.stock,
-            optionValues: JSON.stringify({ Option: data.variantName }),
-          },
-        });
+
+        if (data.collections.length > 0) {
+          await tx.productCollection.createMany({
+            data: data.collections.map((colId) => ({
+              productId: id,
+              collectionId: colId,
+            })),
+          });
+        }
+      }
+
+      // 4. Sync Variants
+      if (data.variants && data.variants.length > 0) {
+        // Collect existing variant IDs to preserve relations where possible
+        const incomingIds = new Set(data.variants.map((v) => v.id).filter(Boolean));
+
+        // Delete variants not in incoming list (if not referenced by order items)
+        for (const ev of existingProduct.variants) {
+          if (!incomingIds.has(ev.id)) {
+            try {
+              await tx.productVariant.delete({ where: { id: ev.id } });
+            } catch {
+              // If variant has order item relations, preserve but set stock to 0
+              await tx.productVariant.update({ where: { id: ev.id }, data: { stock: 0 } });
+            }
+          }
+        }
+
+        // Upsert incoming variants
+        for (const v of data.variants) {
+          const priceCents = Math.round(v.priceDollars * 100);
+          const comparePriceCents = v.compareAtPriceDollars ? Math.round(v.compareAtPriceDollars * 100) : null;
+
+          if (v.id) {
+            await tx.productVariant.update({
+              where: { id: v.id },
+              data: {
+                name: v.name,
+                sku: v.sku,
+                price: priceCents,
+                compareAtPrice: comparePriceCents,
+                stock: v.stock,
+                optionValues: JSON.stringify({ Option: v.name }),
+              },
+            });
+          } else {
+            await tx.productVariant.create({
+              data: {
+                productId: id,
+                name: v.name,
+                sku: v.sku,
+                price: priceCents,
+                compareAtPrice: comparePriceCents,
+                stock: v.stock,
+                optionValues: JSON.stringify({ Option: v.name }),
+              },
+            });
+          }
+        }
+      } else if (data.variantName && data.sku && data.priceDollars !== undefined) {
+        const priceCents = Math.round(data.priceDollars * 100);
+        const comparePriceCents = data.compareAtPriceDollars ? Math.round(data.compareAtPriceDollars * 100) : null;
+
+        if (existingProduct.variants.length > 0) {
+          const firstVariant = existingProduct.variants[0];
+          await tx.productVariant.update({
+            where: { id: firstVariant.id },
+            data: {
+              name: data.variantName,
+              sku: data.sku,
+              price: priceCents,
+              compareAtPrice: comparePriceCents,
+              stock: data.stock !== undefined ? data.stock : firstVariant.stock,
+              optionValues: JSON.stringify({ Option: data.variantName }),
+            },
+          });
+        }
       }
 
       return prod;
@@ -184,22 +255,35 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       },
     });
 
+    // Instant storefront revalidation
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+      revalidatePath(`/product/${updated.slug}`);
+      if (existingProduct.slug !== updated.slug) {
+        revalidatePath(`/product/${existingProduct.slug}`);
+      }
+      if (existingProduct.category?.slug) {
+        revalidatePath(`/category/${existingProduct.category.slug}`);
+      }
+    } catch (revalErr) {
+      console.warn('Revalidation warning:', revalErr);
+    }
+
     const finalProduct = await prisma.product.findUnique({
       where: { id },
       include: {
-        variants: true,
+        variants: { orderBy: { price: 'asc' } },
         images: { orderBy: { sortOrder: 'asc' } },
         category: true,
+        collections: { include: { collection: true } },
       },
     });
 
     return NextResponse.json({ success: true, product: finalProduct });
   } catch (error: unknown) {
     console.error('Error updating product:', error);
-    if (error instanceof Error && error.message.includes('Admin access required')) {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 401 });
-    }
-    const message = error instanceof Error ? error.message : 'Failed request';
+    const message = error instanceof Error ? error.message : 'Failed to update product';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -211,6 +295,7 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     const existingProduct = await prisma.product.findUnique({
       where: { id },
+      include: { category: true },
     });
 
     if (!existingProduct) {
@@ -231,13 +316,22 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       },
     });
 
+    // Revalidate storefront cache
+    try {
+      revalidatePath('/');
+      revalidatePath('/shop');
+      revalidatePath(`/product/${existingProduct.slug}`);
+      if (existingProduct.category?.slug) {
+        revalidatePath(`/category/${existingProduct.category.slug}`);
+      }
+    } catch (revalErr) {
+      console.warn('Revalidation warning:', revalErr);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Error deleting product:', error);
-    if (error instanceof Error && error.message.includes('Admin access required')) {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 401 });
-    }
-    const message = error instanceof Error ? error.message : 'Failed request';
+    const message = error instanceof Error ? error.message : 'Failed to delete product';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

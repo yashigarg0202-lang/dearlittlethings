@@ -5,10 +5,13 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function getNormalizedDatabaseUrl(): string | undefined {
-  const url = process.env.DATABASE_URL;
+  let url = process.env.DATABASE_URL;
   if (!url) return undefined;
   if ((url.includes(":6543") || url.includes("pooler.supabase.com")) && !url.includes("pgbouncer=true")) {
-    return url + (url.includes("?") ? "&" : "?") + "pgbouncer=true";
+    url = url + (url.includes("?") ? "&" : "?") + "pgbouncer=true";
+  }
+  if (url.includes("pooler.supabase.com") && !url.includes("connection_limit=")) {
+    url = url + (url.includes("?") ? "&" : "?") + "connection_limit=5&pool_timeout=30";
   }
   return url;
 }
@@ -22,8 +25,7 @@ export const prisma =
     ...(datasourceUrl ? { datasourceUrl } : {}),
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Reuse Prisma client instance across warm serverless/edge invocations
+globalForPrisma.prisma = prisma;
 
 export default prisma;

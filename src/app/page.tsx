@@ -1,10 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 type HomeProduct = Prisma.ProductGetPayload<{
   include: {
@@ -45,14 +46,13 @@ export default async function HomePage() {
           justifyContent: 'flex-end',
         }}
       >
-        <img
+        <Image
           src="/assets/hero.jpg"
           alt="Handmade crochet strawberry keyring with illustrated stickers on ivory paper"
+          fill
+          priority
+          sizes="100vw"
           style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
             objectFit: 'cover',
             zIndex: 1,
           }}

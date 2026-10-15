@@ -5,7 +5,7 @@ import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: 'the collection | dear little things',
@@ -25,14 +25,25 @@ type ShopCategory = Prisma.CategoryGetPayload<{}>;
 interface ShopPageProps {
   searchParams: Promise<{
     category?: string;
+    collection?: string;
     sort?: string;
     q?: string;
   }>;
 }
 
+function normalizeCategory(raw?: string): string {
+  if (!raw || raw.toLowerCase() === 'all') return 'all';
+  const clean = raw.toLowerCase().trim();
+  if (clean === 'handmade-crochet' || clean === 'handmade crochet' || clean === 'crochet') return 'crochet';
+  if (clean === 'keyrings-charms' || clean === 'keyrings-and-charms' || clean === 'keyrings & charms' || clean === 'keyrings') return 'keyrings';
+  if (clean === 'stickers' || clean === 'sticker') return 'stickers';
+  return clean;
+}
+
 export default async function ShopPage({ searchParams }: ShopPageProps) {
   const params = await searchParams;
-  const currentCategory = params.category || 'all';
+  const normalizedCategory = normalizeCategory(params.category);
+  const currentCollection = params.collection?.trim() || '';
   const query = params.q?.trim() || '';
 
   // Build Prisma where query
@@ -40,15 +51,34 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     status: 'ACTIVE',
   };
 
-  if (currentCategory && currentCategory !== 'all') {
-    where.category = { slug: currentCategory };
+  if (normalizedCategory !== 'all') {
+    where.category = {
+      OR: [
+        { slug: normalizedCategory },
+        { name: { equals: normalizedCategory, mode: 'insensitive' } },
+        ...(params.category ? [{ slug: params.category }] : []),
+      ],
+    };
+  }
+
+  if (currentCollection && currentCollection !== 'all') {
+    where.collections = {
+      some: {
+        collection: {
+          OR: [
+            { slug: currentCollection },
+            { name: { equals: currentCollection, mode: 'insensitive' } },
+          ],
+        },
+      },
+    };
   }
 
   if (query) {
     where.OR = [
-      { title: { contains: query } },
-      { description: { contains: query } },
-      { tags: { contains: query } },
+      { title: { contains: query, mode: 'insensitive' } },
+      { description: { contains: query, mode: 'insensitive' } },
+      { tags: { contains: query, mode: 'insensitive' } },
     ];
   }
 
@@ -64,6 +94,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     }),
     prisma.category.findMany({ orderBy: { sortOrder: 'asc' } }),
   ]);
+
+  const activeCategory = categories.find((c) => c.slug === normalizedCategory);
 
   const categoryPills = [
     { label: 'everything', slug: 'all', href: '/shop' },
@@ -100,7 +132,11 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             color: 'var(--foreground)',
           }}
         >
-          all the little things.
+          {activeCategory
+            ? `${activeCategory.name.toLowerCase()}.`
+            : currentCollection
+            ? `${currentCollection.replace(/-/g, ' ')}.`
+            : 'all the little things.'}
         </h1>
 
         {query && (
@@ -108,6 +144,15 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             Showing results for &ldquo;<strong>{query}</strong>&rdquo; &mdash;{' '}
             <Link href="/shop" className="link-quiet" style={{ color: 'var(--foreground)' }}>
               clear search
+            </Link>
+          </div>
+        )}
+
+        {currentCollection && (
+          <div style={{ marginBottom: '1.5rem', fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>
+            Showing curated series &ldquo;<strong>{currentCollection.replace(/-/g, ' ')}</strong>&rdquo; &mdash;{' '}
+            <Link href="/shop" className="link-quiet" style={{ color: 'var(--foreground)' }}>
+              clear series filter
             </Link>
           </div>
         )}
@@ -123,12 +168,13 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
           }}
         >
           {categoryPills.map((pill) => {
-            const isActive = currentCategory === pill.slug;
+            const isActive = !currentCollection && normalizedCategory === pill.slug;
             return (
               <Link
                 key={pill.slug}
                 href={pill.href}
                 className={isActive ? 'btn-ink' : 'pill-quiet'}
+                scroll={false}
                 style={{
                   fontSize: '0.875rem',
                   letterSpacing: '0.02em',

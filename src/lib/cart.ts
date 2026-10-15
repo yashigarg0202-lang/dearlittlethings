@@ -17,6 +17,31 @@ export type CartItemWithVariant = Prisma.CartItemGetPayload<{
   };
 }>;
 
+export async function getExistingCartId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const session = await getSession();
+
+  if (session?.userId) {
+    const userCart = await prisma.cart.findFirst({
+      where: { userId: session.userId },
+      select: { id: true },
+    });
+    return userCart?.id || null;
+  }
+
+  const guestToken = cookieStore.get(GUEST_COOKIE_NAME)?.value;
+  if (!guestToken) {
+    return null;
+  }
+
+  const guestCart = await prisma.cart.findUnique({
+    where: { guestSessionToken: guestToken },
+    select: { id: true },
+  });
+
+  return guestCart?.id || null;
+}
+
 export async function getOrCreateCartId(): Promise<string> {
   const cookieStore = await cookies();
   const session = await getSession();
@@ -103,6 +128,18 @@ export async function mergeGuestCartIntoUser(guestToken: string, userId: string)
 }
 
 export async function getCartCalculations(cartId: string) {
+  if (!cartId) {
+    return {
+      id: '',
+      items: [] as CartItemWithVariant[],
+      discountCode: null,
+      discountAmount: 0,
+      subtotal: 0,
+      total: 0,
+      itemCount: 0,
+    };
+  }
+
   const cart = await prisma.cart.findUnique({
     where: { id: cartId },
     include: {

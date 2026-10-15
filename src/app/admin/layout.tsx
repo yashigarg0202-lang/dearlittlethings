@@ -48,9 +48,19 @@ export default async function AdminLayout({
       >
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 600 }}>
+            <Link
+              href="/"
+              style={{
+                fontFamily: 'var(--font-serif)',
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: 'inherit',
+                textDecoration: 'none',
+              }}
+              title="Return to customer storefront"
+            >
               dear little things &bull; Studio Admin
-            </span>
+            </Link>
             <span className="badge-admin">Admin Portal</span>
           </div>
 

@@ -288,33 +288,48 @@ export default function CartDrawer() {
                         }}
                       >
                         <button
-                          onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
-                          aria-label="Decrease quantity"
+                          onClick={() => {
+                            if (isLoading) return;
+                            if (item.quantity <= 1) {
+                              removeItem(item.id);
+                            } else {
+                              updateQuantity(item.id, item.quantity - 1);
+                            }
+                          }}
+                          disabled={isLoading}
+                          aria-label={item.quantity <= 1 ? `Remove ${title} from bag` : "Decrease quantity"}
                           style={{
                             background: 'none',
                             border: 'none',
-                            cursor: 'pointer',
+                            cursor: isLoading ? 'not-allowed' : 'pointer',
                             fontSize: '0.85rem',
                             padding: '0 0.25rem',
                             color: 'var(--foreground)',
+                            opacity: isLoading ? 0.5 : 1,
                           }}
                         >
                           –
                         </button>
-                        <span style={{ fontSize: '0.85rem', minWidth: '1rem', textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.85rem', minWidth: '1rem', textAlign: 'center', fontWeight: 500 }}>
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                          onClick={() => {
+                            if (isLoading || item.quantity >= item.variant.stock) return;
+                            updateQuantity(item.id, item.quantity + 1);
+                          }}
+                          disabled={isLoading || item.quantity >= item.variant.stock}
                           aria-label="Increase quantity"
                           style={{
                             background: 'none',
                             border: 'none',
-                            cursor: 'pointer',
+                            cursor: isLoading || item.quantity >= item.variant.stock ? 'not-allowed' : 'pointer',
                             fontSize: '0.85rem',
                             padding: '0 0.25rem',
                             color: 'var(--foreground)',
+                            opacity: isLoading || item.quantity >= item.variant.stock ? 0.35 : 1,
                           }}
+                          title={item.quantity >= item.variant.stock ? `Max stock available (${item.variant.stock})` : undefined}
                         >
                           +
                         </button>
@@ -323,17 +338,24 @@ export default function CartDrawer() {
 
                     {/* Delete Item */}
                     <button
-                      onClick={() => removeItem(item.variantId)}
-                      aria-label="Remove item"
+                      onClick={() => {
+                        if (isLoading) return;
+                        removeItem(item.id);
+                      }}
+                      disabled={isLoading}
+                      aria-label={`Remove ${title} from bag`}
                       style={{
                         alignSelf: 'flex-start',
                         background: 'none',
                         border: 'none',
                         color: 'var(--muted-foreground)',
-                        cursor: 'pointer',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
                         fontSize: '1rem',
                         padding: '0 0.25rem',
+                        opacity: isLoading ? 0.5 : 1,
+                        transition: 'color 0.15s ease',
                       }}
+                      title="Remove item"
                     >
                       ✕
                     </button>
@@ -344,60 +366,118 @@ export default function CartDrawer() {
           )}
         </div>
 
-        {/* Footer with Subtotal & Proceed to Order Request */}
-        {items.length > 0 && (
-          <div
-            style={{
-              padding: '1.5rem 1.75rem',
-              borderTop: '1px solid var(--border)',
-              backgroundColor: 'var(--background)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-            }}
-          >
+        {/* Footer with Subtotal, Delivery Fee & Estimated Total */}
+        {items.length > 0 && (() => {
+          const standardDeliveryFee = 9900; // ₹99 standard studio delivery fee
+          const discountAmt = cart?.discountAmount || 0;
+          const orderTotal = Math.max(0, (cart?.total ?? subtotal) + standardDeliveryFee);
+
+          return (
             <div
               style={{
+                padding: '1.25rem 1.75rem',
+                borderTop: '1px solid var(--border)',
+                backgroundColor: 'var(--background)',
                 display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
+                flexDirection: 'column',
+                gap: '0.65rem',
               }}
             >
-              <span
+              <div
                 style={{
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.2em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '0.875rem',
                   color: 'var(--muted-foreground)',
                 }}
               >
-                Subtotal
-              </span>
-              <span
-                className="font-display"
+                <span>Subtotal</span>
+                <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>
+                  {formatINR(subtotal)}
+                </span>
+              </div>
+
+              {discountAmt > 0 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: '0.875rem',
+                    color: 'var(--primary)',
+                  }}
+                >
+                  <span>Studio Discount</span>
+                  <span>-{formatINR(discountAmt)}</span>
+                </div>
+              )}
+
+              <div
                 style={{
-                  fontSize: '1.4rem',
-                  color: 'var(--foreground)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  fontSize: '0.875rem',
+                  color: 'var(--muted-foreground)',
                 }}
               >
-                {formatINR(subtotal)}
-              </span>
-            </div>
+                <span>Standard Delivery</span>
+                <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>
+                  {formatINR(standardDeliveryFee)}
+                </span>
+              </div>
 
-            <Link
-              href="/checkout"
-              onClick={closeCart}
-              className="btn-ink"
-              style={{
-                width: '100%',
-                textAlign: 'center',
-                boxSizing: 'border-box',
-              }}
-            >
-              proceed to checkout
-            </Link>
-          </div>
-        )}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  paddingTop: '0.65rem',
+                  borderTop: '1px solid var(--border)',
+                  marginTop: '0.2rem',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.15em',
+                    color: 'var(--foreground)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Total
+                </span>
+                <span
+                  className="font-display"
+                  style={{
+                    fontSize: '1.35rem',
+                    color: 'var(--foreground)',
+                  }}
+                >
+                  {formatINR(orderTotal)}
+                </span>
+              </div>
+
+              <Link
+                href="/checkout"
+                onClick={closeCart}
+                className="btn-ink"
+                style={{
+                  width: '100%',
+                  textAlign: 'center',
+                  boxSizing: 'border-box',
+                  marginTop: '0.4rem',
+                  padding: '0.75rem 1rem',
+                  fontSize: '0.9rem',
+                }}
+              >
+                proceed to checkout
+              </Link>
+            </div>
+          );
+        })()}
       </div>
 
       <style jsx global>{`

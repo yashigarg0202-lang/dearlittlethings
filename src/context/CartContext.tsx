@@ -98,6 +98,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateQuantity = async (itemId: string, quantity: number) => {
+    if (quantity < 1) {
+      return removeItem(itemId);
+    }
+
+    // Optimistically update local cart state immediately
+    setCart((prev) => {
+      if (!prev) return prev;
+      const targetItem = prev.items.find((i) => i.id === itemId || i.variantId === itemId);
+      if (!targetItem) return prev;
+      const diff = quantity - targetItem.quantity;
+      const updatedItems = prev.items.map((i) =>
+        i.id === targetItem.id ? { ...i, quantity } : i
+      );
+      const newSubtotal = Math.max(0, prev.subtotal + diff * targetItem.variant.price);
+      let newDiscount = 0;
+      if (prev.discountCode && prev.discountAmount > 0 && prev.subtotal > 0) {
+        const discountRate = prev.discountAmount / prev.subtotal;
+        newDiscount = Math.round(newSubtotal * discountRate);
+      }
+      return {
+        ...prev,
+        items: updatedItems,
+        itemCount: Math.max(0, prev.itemCount + diff),
+        subtotal: newSubtotal,
+        discountAmount: newDiscount,
+        total: Math.max(0, newSubtotal - newDiscount),
+      };
+    });
+
     setIsLoading(true);
     try {
       const res = await fetch(`/api/cart/items/${itemId}`, {
@@ -107,11 +136,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) {
+        await refreshCart();
         return { success: false, message: data.error || 'Failed to update quantity' };
       }
       await refreshCart();
       return { success: true };
     } catch {
+      await refreshCart();
       return { success: false, message: 'Network error updating cart' };
     } finally {
       setIsLoading(false);
@@ -119,6 +150,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeItem = async (itemId: string) => {
+    // Optimistically remove from local cart state immediately
+    setCart((prev) => {
+      if (!prev) return prev;
+      const targetItem = prev.items.find((i) => i.id === itemId || i.variantId === itemId);
+      if (!targetItem) return prev;
+      const updatedItems = prev.items.filter((i) => i.id !== targetItem.id);
+      const removedSubtotal = targetItem.quantity * targetItem.variant.price;
+      const newSubtotal = Math.max(0, prev.subtotal - removedSubtotal);
+      let newDiscount = 0;
+      if (prev.discountCode && prev.discountAmount > 0 && prev.subtotal > 0 && newSubtotal > 0) {
+        const discountRate = prev.discountAmount / prev.subtotal;
+        newDiscount = Math.round(newSubtotal * discountRate);
+      }
+      return {
+        ...prev,
+        items: updatedItems,
+        itemCount: Math.max(0, prev.itemCount - targetItem.quantity),
+        subtotal: newSubtotal,
+        discountAmount: newDiscount,
+        total: Math.max(0, newSubtotal - newDiscount),
+      };
+    });
+
     setIsLoading(true);
     try {
       const res = await fetch(`/api/cart/items/${itemId}`, {
@@ -126,11 +180,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
       if (!res.ok) {
         const data = await res.json();
+        await refreshCart();
         return { success: false, message: data.error || 'Failed to remove item' };
       }
       await refreshCart();
       return { success: true };
     } catch {
+      await refreshCart();
       return { success: false, message: 'Network error removing item' };
     } finally {
       setIsLoading(false);

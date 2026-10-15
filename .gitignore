@@ -50,3 +50,5 @@ outbox/
 *.db-wal
 *.db-shm
 /dev.db
+
+prisma/dev.db

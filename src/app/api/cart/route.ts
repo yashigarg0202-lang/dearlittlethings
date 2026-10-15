@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getOrCreateCartId, getCartCalculations } from '@/lib/cart';
+import { getExistingCartId, getCartCalculations } from '@/lib/cart';
 import { GUEST_COOKIE_NAME } from '@/lib/auth';
 
 export async function GET() {
@@ -14,8 +14,18 @@ export async function GET() {
       shouldSetGuestCookie = true;
     }
 
-    const cartId = await getOrCreateCartId();
-    const data = await getCartCalculations(cartId);
+    const cartId = await getExistingCartId();
+    const data = cartId
+      ? await getCartCalculations(cartId)
+      : {
+          id: '',
+          items: [],
+          discountCode: null,
+          discountAmount: 0,
+          subtotal: 0,
+          total: 0,
+          itemCount: 0,
+        };
 
     const response = NextResponse.json(data);
     if (shouldSetGuestCookie) {

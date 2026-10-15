@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 import { getOrCreateCartId } from '@/lib/cart';
 
 const UpdateSchema = z.object({
-  quantity: z.number().int().min(1).max(50),
+  quantity: z.number().int().min(0).max(50),
 });
 
 export async function PATCH(
@@ -21,12 +21,22 @@ export async function PATCH(
 
     const cartId = await getOrCreateCartId();
     const item = await prisma.cartItem.findFirst({
-      where: { id, cartId },
+      where: {
+        cartId,
+        OR: [{ id }, { variantId: id }],
+      },
       include: { variant: true },
     });
 
     if (!item) {
       return NextResponse.json({ error: 'Item not found in your cart' }, { status: 404 });
+    }
+
+    if (parsed.data.quantity <= 0) {
+      await prisma.cartItem.delete({
+        where: { id: item.id },
+      });
+      return NextResponse.json({ success: true, removed: true });
     }
 
     if (parsed.data.quantity > item.variant.stock) {
@@ -37,7 +47,7 @@ export async function PATCH(
     }
 
     await prisma.cartItem.update({
-      where: { id },
+      where: { id: item.id },
       data: { quantity: parsed.data.quantity },
     });
 
@@ -57,7 +67,10 @@ export async function DELETE(
     const cartId = await getOrCreateCartId();
 
     const item = await prisma.cartItem.findFirst({
-      where: { id, cartId },
+      where: {
+        cartId,
+        OR: [{ id }, { variantId: id }],
+      },
     });
 
     if (!item) {
@@ -65,7 +78,7 @@ export async function DELETE(
     }
 
     await prisma.cartItem.delete({
-      where: { id },
+      where: { id: item.id },
     });
 
     return NextResponse.json({ success: true });

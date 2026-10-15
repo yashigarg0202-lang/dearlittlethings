@@ -1,172 +1,61 @@
 import React from 'react';
-import Link from 'next/link';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
-import { formatINR } from '@/lib/currency';
+import AdminProductsClient, { AdminProductRow } from './AdminProductsClient';
 
 export const dynamic = 'force-dynamic';
 
-type AdminProductWithRelations = Prisma.ProductGetPayload<{
-  include: {
-    category: true;
-    variants: { orderBy: { price: 'asc' } };
-    images: { orderBy: { sortOrder: 'asc' } };
-  };
-}>;
-
 export default async function AdminProductsPage() {
-  await requireAdmin();
-  const products: AdminProductWithRelations[] = await prisma.product.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      category: true,
-      variants: { orderBy: { price: 'asc' } },
-      images: { orderBy: { sortOrder: 'asc' } },
+  const [products, categories] = await Promise.all([
+    prisma.product.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        category: true,
+        variants: { orderBy: { price: 'asc' } },
+        images: { orderBy: { sortOrder: 'asc' } },
+      },
+    }),
+    prisma.category.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+  ]);
+
+  const serializedProducts: AdminProductRow[] = products.map((p) => ({
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    status: p.status,
+    isHandmade: p.isHandmade,
+    isFeatured: p.isFeatured,
+    tags: p.tags,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+    category: {
+      id: p.category.id,
+      name: p.category.name,
+      slug: p.category.slug,
     },
-  });
+    images: p.images.map((img) => ({
+      id: img.id,
+      url: img.url,
+      altText: img.altText,
+      isPrimary: img.isPrimary,
+    })),
+    variants: p.variants.map((v) => ({
+      id: v.id,
+      name: v.name,
+      sku: v.sku,
+      price: v.price,
+      compareAtPrice: v.compareAtPrice,
+      stock: v.stock,
+    })),
+  }));
 
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          borderBottom: '1px solid var(--border-hairline)',
-          paddingBottom: '1.5rem',
-          marginBottom: '2rem',
-        }}
-      >
-        <div>
-          <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.2rem', margin: 0 }}>
-            Studio Products ({products.length})
-          </h1>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            Manage titles, variants, handmade flags, prices, and publication statuses.
-          </p>
-        </div>
-
-        <Link href="/admin/products/new" className="btn-primary" style={{ fontSize: '0.9rem' }}>
-          + Add New Product
-        </Link>
-      </div>
-
-      <div
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-hairline)',
-          overflowX: 'auto',
-        }}
-      >
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-hairline)', backgroundColor: 'var(--bg-secondary)' }}>
-              <th style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Product Title</th>
-              <th style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Category</th>
-              <th style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Status</th>
-              <th style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Price Range</th>
-              <th style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Total Stock</th>
-              <th style={{ padding: '0.85rem 1rem', fontWeight: 600 }}>Handmade</th>
-              <th style={{ padding: '0.85rem 1rem', fontWeight: 600, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p: AdminProductWithRelations) => {
-              const minPrice = p.variants[0]?.price || 0;
-              const maxPrice = p.variants[p.variants.length - 1]?.price || minPrice;
-              const totalStock = p.variants.reduce((sum: number, v: { stock: number }) => sum + v.stock, 0);
-
-              return (
-                <tr
-                  key={p.id}
-                  style={{
-                    borderBottom: '1px solid var(--border-subtle)',
-                    backgroundColor: 'var(--bg-primary)',
-                  }}
-                >
-                  <td style={{ padding: '0.85rem 1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      {p.images[0]?.url && (
-                        <div
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                            backgroundColor: 'var(--muted)',
-                            flexShrink: 0,
-                            border: '1px solid var(--border)',
-                          }}
-                        >
-                          <img
-                            src={p.images[0].url}
-                            alt={p.title}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <strong>{p.title}</strong>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          slug: <code>{p.slug}</code>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem' }}>{p.category.name}</td>
-                  <td style={{ padding: '0.85rem 1rem' }}>
-                    <span
-                      style={{
-                        padding: '0.15rem 0.45rem',
-                        backgroundColor: p.status === 'ACTIVE' ? 'var(--accent-sage-light)' : 'var(--bg-tag)',
-                        color: p.status === 'ACTIVE' ? 'var(--accent-sage)' : 'var(--text-secondary)',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {p.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem' }}>
-                    {formatINR(minPrice)}
-                    {maxPrice > minPrice && ` – ${formatINR(maxPrice)}`}
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem' }}>
-                    <span style={{ fontWeight: totalStock <= 5 ? 600 : 400, color: totalStock <= 5 ? 'var(--accent-terracotta)' : 'inherit' }}>
-                      {totalStock} units
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem' }}>
-                    {p.isHandmade ? 'Yes' : 'No'}
-                  </td>
-                  <td style={{ padding: '0.85rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <Link
-                      href={`/admin/products/${p.id}/edit`}
-                      style={{
-                        fontSize: '0.85rem',
-                        color: 'var(--accent-terracotta)',
-                        marginRight: '1rem',
-                        fontWeight: 600,
-                        textDecoration: 'underline',
-                      }}
-                    >
-                      Edit
-                    </Link>
-                    <Link
-                      href={`/product/${p.slug}`}
-                      target="_blank"
-                      style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'underline' }}
-                    >
-                      View Live &nearr;
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <AdminProductsClient
+      initialProducts={serializedProducts}
+      categories={categories}
+    />
   );
 }

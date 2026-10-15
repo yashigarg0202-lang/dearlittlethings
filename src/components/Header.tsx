@@ -52,6 +52,8 @@ export default function Header() {
           {/* Brand Wordmark */}
           <Link
             href="/"
+            id="header-brand-logo"
+            aria-label="dear little things homepage"
             className="font-display"
             style={{
               fontSize: '1.6rem',
@@ -59,6 +61,8 @@ export default function Header() {
               letterSpacing: '-0.025em',
               color: 'var(--foreground)',
               textDecoration: 'none',
+              cursor: 'pointer',
+              display: 'inline-block',
             }}
           >
             dear little things

@@ -220,17 +220,32 @@ export default function ProductDetailClient({
           </div>
 
           {/* Description */}
-          <p
-            style={{
-              fontSize: '1rem',
-              lineHeight: '1.75',
-              color: 'var(--muted-foreground)',
-              marginBottom: '2.5rem',
-              fontFamily: 'var(--font-sans)',
-            }}
-          >
-            {product.description}
-          </p>
+          {/* Product Description */}
+          {/<[a-z][\s\S]*>/i.test(product.description) ? (
+            <div
+              style={{
+                fontSize: '1rem',
+                lineHeight: '1.75',
+                color: 'var(--muted-foreground)',
+                marginBottom: '2.5rem',
+                fontFamily: 'var(--font-sans)',
+              }}
+              dangerouslySetInnerHTML={{ __html: product.description }}
+            />
+          ) : (
+            <p
+              style={{
+                fontSize: '1rem',
+                lineHeight: '1.75',
+                color: 'var(--muted-foreground)',
+                marginBottom: '2.5rem',
+                fontFamily: 'var(--font-sans)',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {product.description}
+            </p>
+          )}
 
           {/* Variant Selector Pills if more than 1 variant */}
           {product.variants.length > 1 && (

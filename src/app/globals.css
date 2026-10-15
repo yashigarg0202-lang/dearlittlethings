@@ -5,9 +5,9 @@
 
 :root {
   /* Typography Roles */
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Karla', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-accent: 'Caveat', cursive;
+  --font-display: var(--font-fraunces), 'Fraunces', Georgia, serif;
+  --font-body: var(--font-lato), 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-accent: var(--font-caveat), 'Caveat', cursive;
 
   /* Surfaces & Backgrounds - NEVER pure #FFFFFF */
   --background: #FAF7F2;         /* Warm Ivory / Cream */

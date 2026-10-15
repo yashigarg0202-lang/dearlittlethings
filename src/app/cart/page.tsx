@@ -154,46 +154,61 @@ export default function CartPage() {
                     {item.variant.name}
                   </div>
 
-                  <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--border-hairline)', backgroundColor: 'var(--bg-primary)' }}>
-                    <button
-                      onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                      disabled={isLoading || item.quantity <= 1}
-                      aria-label="Decrease quantity"
-                      style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'none' }}
-                    >
-                      <MinusIcon size={12} />
-                    </button>
-                    <span style={{ padding: '0.1rem 0.6rem', fontSize: '0.9rem', fontWeight: 600 }}>
-                      {item.quantity}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--border-hairline)', backgroundColor: 'var(--bg-primary)' }}>
+                      <button
+                        onClick={() => {
+                          if (isLoading) return;
+                          if (item.quantity <= 1) {
+                            removeItem(item.id);
+                          } else {
+                            updateQuantity(item.id, item.quantity - 1);
+                          }
+                        }}
+                        disabled={isLoading}
+                        aria-label={item.quantity <= 1 ? "Remove item" : "Decrease quantity"}
+                        style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'none', cursor: isLoading ? 'not-allowed' : 'pointer' }}
+                      >
+                        <MinusIcon size={12} />
+                      </button>
+                      <span style={{ padding: '0.1rem 0.6rem', fontSize: '0.9rem', fontWeight: 600 }}>
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (isLoading || item.quantity >= item.variant.stock) return;
+                          updateQuantity(item.id, item.quantity + 1);
+                        }}
+                        disabled={isLoading || item.quantity >= item.variant.stock}
+                        aria-label="Increase quantity"
+                        style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'none', cursor: isLoading || item.quantity >= item.variant.stock ? 'not-allowed' : 'pointer' }}
+                      >
+                        <PlusIcon size={12} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                      {formatINR(item.variant.price * item.quantity)}
                     </span>
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      disabled={isLoading || item.quantity >= item.variant.stock}
-                      aria-label="Increase quantity"
-                      style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'none' }}
+                      onClick={() => {
+                        if (isLoading) return;
+                        removeItem(item.id);
+                      }}
+                      disabled={isLoading}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        fontSize: '0.75rem',
+                        textDecoration: 'underline',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        opacity: isLoading ? 0.5 : 1,
+                      }}
                     >
-                      <PlusIcon size={12} />
+                      Remove
                     </button>
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                  <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                    {formatINR(item.variant.price * item.quantity)}
-                  </span>
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      fontSize: '0.75rem',
-                      textDecoration: 'underline',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Remove
-                  </button>
                 </div>
               </div>
             ))}
