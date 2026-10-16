@@ -12,7 +12,6 @@ export default function CartDrawer() {
     closeCart,
     updateQuantity,
     removeItem,
-    isLoading,
   } = useCart();
 
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -289,23 +288,20 @@ export default function CartDrawer() {
                       >
                         <button
                           onClick={() => {
-                            if (isLoading) return;
                             if (item.quantity <= 1) {
                               removeItem(item.id);
                             } else {
                               updateQuantity(item.id, item.quantity - 1);
                             }
                           }}
-                          disabled={isLoading}
                           aria-label={item.quantity <= 1 ? `Remove ${title} from bag` : "Decrease quantity"}
                           style={{
                             background: 'none',
                             border: 'none',
-                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            cursor: 'pointer',
                             fontSize: '0.85rem',
                             padding: '0 0.25rem',
                             color: 'var(--foreground)',
-                            opacity: isLoading ? 0.5 : 1,
                           }}
                         >
                           –
@@ -315,19 +311,19 @@ export default function CartDrawer() {
                         </span>
                         <button
                           onClick={() => {
-                            if (isLoading || item.quantity >= item.variant.stock) return;
+                            if (item.quantity >= item.variant.stock) return;
                             updateQuantity(item.id, item.quantity + 1);
                           }}
-                          disabled={isLoading || item.quantity >= item.variant.stock}
+                          disabled={item.quantity >= item.variant.stock}
                           aria-label="Increase quantity"
                           style={{
                             background: 'none',
                             border: 'none',
-                            cursor: isLoading || item.quantity >= item.variant.stock ? 'not-allowed' : 'pointer',
+                            cursor: item.quantity >= item.variant.stock ? 'not-allowed' : 'pointer',
                             fontSize: '0.85rem',
                             padding: '0 0.25rem',
                             color: 'var(--foreground)',
-                            opacity: isLoading || item.quantity >= item.variant.stock ? 0.35 : 1,
+                            opacity: item.quantity >= item.variant.stock ? 0.35 : 1,
                           }}
                           title={item.quantity >= item.variant.stock ? `Max stock available (${item.variant.stock})` : undefined}
                         >
@@ -338,21 +334,16 @@ export default function CartDrawer() {
 
                     {/* Delete Item */}
                     <button
-                      onClick={() => {
-                        if (isLoading) return;
-                        removeItem(item.id);
-                      }}
-                      disabled={isLoading}
+                      onClick={() => removeItem(item.id)}
                       aria-label={`Remove ${title} from bag`}
                       style={{
                         alignSelf: 'flex-start',
                         background: 'none',
                         border: 'none',
                         color: 'var(--muted-foreground)',
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        cursor: 'pointer',
                         fontSize: '1rem',
                         padding: '0 0.25rem',
-                        opacity: isLoading ? 0.5 : 1,
                         transition: 'color 0.15s ease',
                       }}
                       title="Remove item"

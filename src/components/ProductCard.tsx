@@ -45,7 +45,8 @@ export default function ProductCard({
   const price = defaultVariant ? defaultVariant.price : 0;
   const isAvailable = variants.some((v: ProductCardProps['variants'][number]) => v.stock > 0);
 
-  const handleQuickAdd = async (e: React.MouseEvent) => {
+  // Explicit Add to Bag handler: strictly stops propagation so navigation is never triggered
+  const handleQuickAdd = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (!defaultVariant || !isAvailable) return;
@@ -67,7 +68,14 @@ export default function ProductCard({
       }}
       className={`group ${index % 3 === 1 ? 'stagger-col-2' : ''}`}
     >
-      <Link href={`/product/${slug}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+      {/* Product Detail Navigation Link: clicking image, title, price, or description strictly navigates to details */}
+      <Link
+        href={`/product/${slug}`}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
+      >
         {/* Paper Frame Image Container */}
         <div
           className="paper-frame"
@@ -146,11 +154,13 @@ export default function ProductCard({
         )}
       </Link>
 
-      {/* Add to Bag button */}
+      {/* Explicit Add to Bag button: isolated from card navigation with explicit type="button" */}
       <button
+        type="button"
         onClick={handleQuickAdd}
         disabled={!isAvailable}
         className="link-quiet"
+        aria-label={!isAvailable ? `${title} is sold out` : `Add ${title} to bag`}
         style={{
           marginTop: '0.75rem',
           fontSize: '0.875rem',

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 
 export interface CartItemData {
   id: string;
@@ -53,19 +53,74 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartData | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Active tombstones protect removed items from being resurrected by out-of-order server responses
+  const removedTombstones = useRef<Map<string, number>>(new Map());
+  // Backups for rolling back optimistic removals in case of network or server failure
+  const rollbackBackups = useRef<Map<string, { item: CartItemData; previousCart: CartData }>>(new Map());
+  const pendingRemovalCount = useRef<number>(0);
+
+  // Helper to filter out any tombstoned items from a server-returned cart
+  const filterOutTombstonedItems = useCallback((serverCart: CartData): CartData => {
+    const now = Date.now();
+    for (const [id, exp] of removedTombstones.current.entries()) {
+      if (exp <= now) {
+        removedTombstones.current.delete(id);
+      }
+    }
+
+    if (removedTombstones.current.size === 0) {
+      return serverCart;
+    }
+
+    const filteredItems = serverCart.items.filter((item) => {
+      const expId = removedTombstones.current.get(item.id);
+      const expVariant = removedTombstones.current.get(item.variantId);
+      const isTombstoned = (expId && expId > now) || (expVariant && expVariant > now);
+      return !isTombstoned;
+    });
+
+    if (filteredItems.length === serverCart.items.length) {
+      return serverCart;
+    }
+
+    let subtotal = 0;
+    let itemCount = 0;
+    for (const item of filteredItems) {
+      subtotal += item.variant.price * item.quantity;
+      itemCount += item.quantity;
+    }
+
+    let discountAmount = 0;
+    if (serverCart.discountCode && serverCart.discountAmount > 0 && serverCart.subtotal > 0 && subtotal > 0) {
+      const discountRate = serverCart.discountAmount / serverCart.subtotal;
+      discountAmount = Math.round(subtotal * discountRate);
+    }
+
+    return {
+      ...serverCart,
+      items: filteredItems,
+      subtotal,
+      itemCount,
+      discountAmount,
+      total: Math.max(0, subtotal - discountAmount),
+    };
+  }, []);
 
   const refreshCart = useCallback(async () => {
     try {
       const res = await fetch('/api/cart');
       if (res.ok) {
         const data = await res.json();
-        setCart(data);
+        setCart(filterOutTombstonedItems(data));
       }
     } catch (err) {
       console.error('Failed to load cart', err);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [filterOutTombstonedItems]);
 
   useEffect(() => {
     refreshCart();
@@ -76,6 +131,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const toggleCart = () => setIsCartOpen((prev) => !prev);
 
   const addToCart = async (variantId: string, quantity = 1) => {
+    // Clear any tombstone for this variantId so re-adding works immediately
+    for (const [key] of removedTombstones.current.entries()) {
+      if (key === variantId) {
+        removedTombstones.current.delete(key);
+      }
+    }
+
     setIsLoading(true);
     try {
       const res = await fetch('/api/cart/items', {
@@ -102,6 +164,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return removeItem(itemId);
     }
 
+    const previousCart = cart;
+
     // Optimistically update local cart state immediately
     setCart((prev) => {
       if (!prev) return prev;
@@ -127,7 +191,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       };
     });
 
-    setIsLoading(true);
     try {
       const res = await fetch(`/api/cart/items/${itemId}`, {
         method: 'PATCH',
@@ -136,26 +199,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) {
-        await refreshCart();
+        if (previousCart) setCart(previousCart);
         return { success: false, message: data.error || 'Failed to update quantity' };
       }
-      await refreshCart();
+      if (data.cart) {
+        setCart(filterOutTombstonedItems(data.cart));
+      }
       return { success: true };
     } catch {
-      await refreshCart();
+      if (previousCart) setCart(previousCart);
       return { success: false, message: 'Network error updating cart' };
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const removeItem = async (itemId: string) => {
-    // Optimistically remove from local cart state immediately
+    if (!cart) return { success: true };
+
+    const targetItem = cart.items.find((i) => i.id === itemId || i.variantId === itemId);
+    if (!targetItem) {
+      return { success: true };
+    }
+
+    const targetId = targetItem.id;
+    const targetVariantId = targetItem.variantId;
+
+    // Record rollback backup
+    rollbackBackups.current.set(targetId, { item: targetItem, previousCart: cart });
+
+    // Set tombstones with 15-second TTL to prevent resurrection by out-of-order server responses
+    const expiry = Date.now() + 15000;
+    removedTombstones.current.set(targetId, expiry);
+    removedTombstones.current.set(targetVariantId, expiry);
+    pendingRemovalCount.current += 1;
+
+    // Optimistically remove from local cart state immediately (0ms delay)
     setCart((prev) => {
       if (!prev) return prev;
-      const targetItem = prev.items.find((i) => i.id === itemId || i.variantId === itemId);
-      if (!targetItem) return prev;
-      const updatedItems = prev.items.filter((i) => i.id !== targetItem.id);
+      const updatedItems = prev.items.filter(
+        (i) => i.id !== targetId && i.variantId !== targetVariantId
+      );
       const removedSubtotal = targetItem.quantity * targetItem.variant.price;
       const newSubtotal = Math.max(0, prev.subtotal - removedSubtotal);
       let newDiscount = 0;
@@ -173,23 +255,88 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       };
     });
 
-    setIsLoading(true);
+    // Execute DELETE in background without global isLoading lock
     try {
-      const res = await fetch(`/api/cart/items/${itemId}`, {
+      const res = await fetch(`/api/cart/items/${targetId}`, {
         method: 'DELETE',
       });
+      pendingRemovalCount.current = Math.max(0, pendingRemovalCount.current - 1);
+
       if (!res.ok) {
-        const data = await res.json();
-        await refreshCart();
+        // Rollback on server failure
+        removedTombstones.current.delete(targetId);
+        removedTombstones.current.delete(targetVariantId);
+        const backup = rollbackBackups.current.get(targetId);
+        rollbackBackups.current.delete(targetId);
+
+        if (backup) {
+          setCart((prev) => {
+            if (!prev) return backup.previousCart;
+            const alreadyThere = prev.items.some((i) => i.id === targetId || i.variantId === targetVariantId);
+            if (alreadyThere) return prev;
+            const restoredItems = [backup.item, ...prev.items];
+            const restoredSubtotal = prev.subtotal + backup.item.quantity * backup.item.variant.price;
+            let restoredDiscount = 0;
+            if (prev.discountCode && prev.discountAmount > 0) {
+              const rate = prev.discountAmount / (prev.subtotal || 1);
+              restoredDiscount = Math.round(restoredSubtotal * rate);
+            }
+            return {
+              ...prev,
+              items: restoredItems,
+              itemCount: prev.itemCount + backup.item.quantity,
+              subtotal: restoredSubtotal,
+              discountAmount: restoredDiscount,
+              total: Math.max(0, restoredSubtotal - restoredDiscount),
+            };
+          });
+        }
+        const data = await res.json().catch(() => ({}));
         return { success: false, message: data.error || 'Failed to remove item' };
       }
-      await refreshCart();
+
+      // Deletion confirmed on server
+      rollbackBackups.current.delete(targetId);
+      const data = await res.json().catch(() => ({}));
+
+      // Apply server cart calculations while respecting active tombstones
+      if (data.cart) {
+        setCart(filterOutTombstonedItems(data.cart));
+      }
+
       return { success: true };
     } catch {
-      await refreshCart();
+      pendingRemovalCount.current = Math.max(0, pendingRemovalCount.current - 1);
+      // Rollback on network failure
+      removedTombstones.current.delete(targetId);
+      removedTombstones.current.delete(targetVariantId);
+      const backup = rollbackBackups.current.get(targetId);
+      rollbackBackups.current.delete(targetId);
+
+      if (backup) {
+        setCart((prev) => {
+          if (!prev) return backup.previousCart;
+          const alreadyThere = prev.items.some((i) => i.id === targetId || i.variantId === targetVariantId);
+          if (alreadyThere) return prev;
+          const restoredItems = [backup.item, ...prev.items];
+          const restoredSubtotal = prev.subtotal + backup.item.quantity * backup.item.variant.price;
+          let restoredDiscount = 0;
+          if (prev.discountCode && prev.discountAmount > 0) {
+            const rate = prev.discountAmount / (prev.subtotal || 1);
+            restoredDiscount = Math.round(restoredSubtotal * rate);
+          }
+          return {
+            ...prev,
+            items: restoredItems,
+            itemCount: prev.itemCount + backup.item.quantity,
+            subtotal: restoredSubtotal,
+            discountAmount: restoredDiscount,
+            total: Math.max(0, restoredSubtotal - restoredDiscount),
+          };
+        });
+      }
+
       return { success: false, message: 'Network error removing item' };
-    } finally {
-      setIsLoading(false);
     }
   };
 

@@ -73,7 +73,11 @@ export default function ProductDetailClient({
     { id: '1', url: '/placeholders/product-stickers-1.svg', altText: product.title },
   ];
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (selectedVariant.stock <= 0) return;
     const res = await addToCart(selectedVariant.id, quantity);
     if (res.success) {
@@ -138,8 +142,13 @@ export default function ProductDetailClient({
             <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
               {images.map((img: ProductImageItem, idx: number) => (
                 <button
+                  type="button"
                   key={img.id}
-                  onClick={() => setSelectedImageIndex(idx)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedImageIndex(idx);
+                  }}
                   aria-label={`View photo ${idx + 1}`}
                   className="paper-frame"
                   style={{
@@ -267,8 +276,11 @@ export default function ProductDetailClient({
                   const isSelected = selectedVariant.id === v.id;
                   return (
                     <button
+                      type="button"
                       key={v.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         setSelectedVariant(v);
                         setQuantity(1);
                       }}
@@ -314,7 +326,11 @@ export default function ProductDetailClient({
             >
               <button
                 type="button"
-                onClick={() => setQuantity((q: number) => Math.max(1, q - 1))}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setQuantity((q: number) => Math.max(1, q - 1));
+                }}
                 disabled={quantity <= 1}
                 aria-label="Decrease quantity"
                 style={{
@@ -342,7 +358,11 @@ export default function ProductDetailClient({
               </span>
               <button
                 type="button"
-                onClick={() => setQuantity((q: number) => Math.min(selectedVariant.stock, q + 1))}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setQuantity((q: number) => Math.min(selectedVariant.stock, q + 1));
+                }}
                 disabled={quantity >= selectedVariant.stock}
                 aria-label="Increase quantity"
                 style={{
@@ -362,7 +382,11 @@ export default function ProductDetailClient({
             {/* Add to Bag Pill Button */}
             <button
               type="button"
-              onClick={handleAddToCart}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAddToCart();
+              }}
               disabled={isLoading || selectedVariant.stock <= 0}
               className="btn-ink"
               style={{

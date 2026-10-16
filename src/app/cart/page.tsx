@@ -14,7 +14,6 @@ export default function CartPage() {
     removeItem,
     applyDiscount,
     removeDiscount,
-    isLoading,
   } = useCart();
 
   const [discountInput, setDiscountInput] = useState('');
@@ -157,16 +156,14 @@ export default function CartPage() {
                     <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--border-hairline)', backgroundColor: 'var(--bg-primary)' }}>
                       <button
                         onClick={() => {
-                          if (isLoading) return;
                           if (item.quantity <= 1) {
                             removeItem(item.id);
                           } else {
                             updateQuantity(item.id, item.quantity - 1);
                           }
                         }}
-                        disabled={isLoading}
                         aria-label={item.quantity <= 1 ? "Remove item" : "Decrease quantity"}
-                        style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'none', cursor: isLoading ? 'not-allowed' : 'pointer' }}
+                        style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'none', cursor: 'pointer' }}
                       >
                         <MinusIcon size={12} />
                       </button>
@@ -175,12 +172,12 @@ export default function CartPage() {
                       </span>
                       <button
                         onClick={() => {
-                          if (isLoading || item.quantity >= item.variant.stock) return;
+                          if (item.quantity >= item.variant.stock) return;
                           updateQuantity(item.id, item.quantity + 1);
                         }}
-                        disabled={isLoading || item.quantity >= item.variant.stock}
+                        disabled={item.quantity >= item.variant.stock}
                         aria-label="Increase quantity"
-                        style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'none', cursor: isLoading || item.quantity >= item.variant.stock ? 'not-allowed' : 'pointer' }}
+                        style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'none', cursor: item.quantity >= item.variant.stock ? 'not-allowed' : 'pointer' }}
                       >
                         <PlusIcon size={12} />
                       </button>
@@ -192,19 +189,15 @@ export default function CartPage() {
                       {formatINR(item.variant.price * item.quantity)}
                     </span>
                     <button
-                      onClick={() => {
-                        if (isLoading) return;
-                        removeItem(item.id);
-                      }}
-                      disabled={isLoading}
+                      onClick={() => removeItem(item.id)}
                       style={{
                         background: 'none',
                         border: 'none',
                         color: 'var(--text-muted)',
                         fontSize: '0.75rem',
                         textDecoration: 'underline',
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                        opacity: isLoading ? 0.5 : 1,
+                        cursor: 'pointer',
+                        opacity: 1,
                       }}
                     >
                       Remove

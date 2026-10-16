@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { getOrCreateCartId } from '@/lib/cart';
+import { getOrCreateCartId, getExistingCartId, getCartCalculations } from '@/lib/cart';
 
 const UpdateSchema = z.object({
   quantity: z.number().int().min(0).max(50),
@@ -33,10 +33,14 @@ export async function PATCH(
     }
 
     if (parsed.data.quantity <= 0) {
-      await prisma.cartItem.delete({
-        where: { id: item.id },
+      await prisma.cartItem.deleteMany({
+        where: {
+          cartId,
+          OR: [{ id }, { variantId: id }],
+        },
       });
-      return NextResponse.json({ success: true, removed: true });
+      const updatedCart = await getCartCalculations(cartId);
+      return NextResponse.json({ success: true, removed: true, cart: updatedCart });
     }
 
     if (parsed.data.quantity > item.variant.stock) {
@@ -51,7 +55,8 @@ export async function PATCH(
       data: { quantity: parsed.data.quantity },
     });
 
-    return NextResponse.json({ success: true });
+    const updatedCart = await getCartCalculations(cartId);
+    return NextResponse.json({ success: true, cart: updatedCart });
   } catch (error) {
     console.error('Error updating cart item:', error);
     return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });
@@ -64,24 +69,32 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const cartId = await getOrCreateCartId();
+    const cartId = await getExistingCartId();
 
-    const item = await prisma.cartItem.findFirst({
+    if (!cartId) {
+      return NextResponse.json({
+        success: true,
+        cart: {
+          id: '',
+          items: [],
+          discountCode: null,
+          discountAmount: 0,
+          subtotal: 0,
+          total: 0,
+          itemCount: 0,
+        },
+      });
+    }
+
+    await prisma.cartItem.deleteMany({
       where: {
         cartId,
         OR: [{ id }, { variantId: id }],
       },
     });
 
-    if (!item) {
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
-    }
-
-    await prisma.cartItem.delete({
-      where: { id: item.id },
-    });
-
-    return NextResponse.json({ success: true });
+    const updatedCart = await getCartCalculations(cartId);
+    return NextResponse.json({ success: true, cart: updatedCart });
   } catch (error) {
     console.error('Error deleting cart item:', error);
     return NextResponse.json({ error: 'Failed to delete item' }, { status: 500 });
