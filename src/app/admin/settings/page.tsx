@@ -6,7 +6,7 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<any>({
     storeName: 'Mio Studio',
     tagline: 'small things that make everything a little more beautiful',
-    announcementText: 'Handmade with care — free domestic studio delivery on orders over $45',
+    announcementText: 'Handmade with care — free domestic studio delivery on orders over ₹999',
     announcementLink: '/shop',
     announcementEnabled: true,
     whatsappNumber: '+15035550192',

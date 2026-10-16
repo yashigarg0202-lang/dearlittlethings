@@ -216,7 +216,7 @@ model Payment {
   paymentIntentId String?  @unique
   status          String   @default("PENDING") // PENDING, SUCCEEDED, FAILED, REFUNDED
   amount          Int
-  currency        String   @default("USD")
+  currency        String   @default("INR")
   rawPayload      String? // JSON string
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -277,11 +277,11 @@ model SiteSettings {
   id                    String   @id @default("default")
   storeName             String   @default("Mio Studio")
   tagline               String   @default("small things that make everything a little more beautiful")
-  announcementText      String   @default("Handmade with care — free domestic studio delivery on orders over $45")
+  announcementText      String   @default("Handmade with care — free domestic studio delivery on orders over ₹999")
   announcementLink      String?  @default("/shop")
   announcementEnabled   Boolean  @default(true)
-  currency              String   @default("USD")
-  currencySymbol        String   @default("$")
+  currency              String   @default("INR")
+  currencySymbol        String   @default("₹")
   taxInclusive          Boolean  @default(true)
   contactEmail          String   @default("hello@miostudio.craft")
   whatsappNumber        String?  @default("+15035550192")

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatINR } from '@/lib/currency';
 
 export interface AdminProductRow {
   id: string;
@@ -741,8 +742,8 @@ export default function AdminProductsClient({
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
                         <span>
-                          ${(minPrice / 100).toFixed(2)}
-                          {maxPrice > minPrice && ` – $${(maxPrice / 100).toFixed(2)}`}
+                          {formatINR(minPrice)}
+                          {maxPrice > minPrice && ` – ${formatINR(maxPrice)}`}
                         </span>
                         {hasSale && (
                           <span style={{ fontSize: '0.7rem', color: 'var(--accent-terracotta)', fontWeight: 600 }}>

@@ -175,7 +175,7 @@ export default function ProductForm({
       }
       const priceNum = parseFloat(v.priceDollars);
       if (isNaN(priceNum) || priceNum < 0.5) {
-        setErrorMessage(`Invalid price for variant "${v.name}". Minimum price is $0.50.`);
+        setErrorMessage(`Invalid price for variant "${v.name}". Minimum price is ₹1.00.`);
         return;
       }
     }

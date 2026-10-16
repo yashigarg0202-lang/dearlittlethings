@@ -85,10 +85,10 @@ export default function VariantManager({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.4rem' }}>
-              Price (USD) *
+              Price (₹ INR) *
             </label>
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>$</span>
+              <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>₹</span>
               <input
                 type="number"
                 step="0.01"
@@ -107,7 +107,7 @@ export default function VariantManager({
               Compare-at Price (Sale)
             </label>
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>$</span>
+              <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-foreground)' }}>₹</span>
               <input
                 type="number"
                 step="0.01"
@@ -158,8 +158,8 @@ export default function VariantManager({
               <tr style={{ backgroundColor: 'rgba(244, 239, 235, 0.5)', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '0.6rem 0.8rem', fontWeight: 600 }}>Option / Variant Name *</th>
                 <th style={{ padding: '0.6rem 0.8rem', fontWeight: 600 }}>SKU *</th>
-                <th style={{ padding: '0.6rem 0.8rem', fontWeight: 600 }}>Price ($) *</th>
-                <th style={{ padding: '0.6rem 0.8rem', fontWeight: 600 }}>Compare ($)</th>
+                <th style={{ padding: '0.6rem 0.8rem', fontWeight: 600 }}>Price (₹) *</th>
+                <th style={{ padding: '0.6rem 0.8rem', fontWeight: 600 }}>Compare (₹)</th>
                 <th style={{ padding: '0.6rem 0.8rem', fontWeight: 600 }}>Stock *</th>
                 <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center', width: '50px' }}>Remove</th>
               </tr>

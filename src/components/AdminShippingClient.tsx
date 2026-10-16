@@ -127,7 +127,7 @@ export default function AdminShippingClient({ initialZones }: AdminShippingClien
                       {r.rate === 0 ? 'Free' : formatINR(r.rate)}
                       {r.minAmount && (
                         <div style={{ fontSize: '0.72rem', color: 'var(--accent-sage)', fontWeight: 400 }}>
-                          (Orders over ${formatINR(r.minAmount)})
+                          (Orders over {formatINR(r.minAmount)})
                         </div>
                       )}
                     </div>
