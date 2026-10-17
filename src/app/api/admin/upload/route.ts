@@ -100,6 +100,87 @@ function parseJwtClaims(token: string): { ref?: string; role?: string; iss?: str
   }
 }
 
+/**
+ * Extract project reference from DATABASE_URL or DIRECT_URL if available
+ */
+function extractProjectRefFromDatabaseUrl(): string | null {
+  const dbUrls = [process.env.DATABASE_URL, process.env.DIRECT_URL];
+  for (const dbUrl of dbUrls) {
+    if (!dbUrl || isPlaceholder(dbUrl)) continue;
+    // Format: postgresql://postgres.<projectRef>:<password>@aws-...
+    const poolerMatch = dbUrl.match(/postgres\.([a-z0-9]+):/i);
+    if (poolerMatch && poolerMatch[1] && !isPlaceholder(poolerMatch[1])) {
+      return poolerMatch[1].toLowerCase();
+    }
+    // Format: @<projectRef>.supabase.co or db.<projectRef>.supabase.co
+    const hostMatch = dbUrl.match(/(?:@|\/\/)(?:db\.)?([a-z0-9]+)\.supabase\.co/i);
+    if (hostMatch && hostMatch[1] && !isPlaceholder(hostMatch[1])) {
+      return hostMatch[1].toLowerCase();
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolve candidate Supabase storage URL across supported environment variables
+ * and known project references.
+ */
+function resolveCandidateUrl(): { url: string | null; source: string; placeholderDetected: boolean } {
+  const candidates: { name: string; value?: string }[] = [
+    { name: 'SUPABASE_URL', value: process.env.SUPABASE_URL },
+    { name: 'NEXT_PUBLIC_SUPABASE_URL', value: process.env.NEXT_PUBLIC_SUPABASE_URL },
+    { name: 'SUPABASE_PROJECT_URL', value: process.env.SUPABASE_PROJECT_URL },
+  ];
+
+  let placeholderFound = false;
+
+  for (const candidate of candidates) {
+    if (candidate.value) {
+      if (!isPlaceholder(candidate.value)) {
+        return { url: candidate.value, source: candidate.name, placeholderDetected: placeholderFound };
+      }
+      placeholderFound = true;
+    }
+  }
+
+  // Fallback: Derive project reference dynamically from database connection string
+  const derivedRef = extractProjectRefFromDatabaseUrl();
+  if (derivedRef) {
+    return {
+      url: `https://${derivedRef}.supabase.co`,
+      source: 'DATABASE_URL_DERIVED',
+      placeholderDetected: placeholderFound,
+    };
+  }
+
+  return { url: null, source: 'none', placeholderDetected: placeholderFound };
+}
+
+/**
+ * Resolve candidate Supabase privileged secret key across supported environment variables.
+ * Never checks or falls back to public/anonymous keys.
+ */
+function resolveCandidateKey(): { key: string | null; source: string; placeholderDetected: boolean } {
+  const candidates: { name: string; value?: string }[] = [
+    { name: 'SUPABASE_SERVICE_ROLE_KEY', value: process.env.SUPABASE_SERVICE_ROLE_KEY },
+    { name: 'SUPABASE_SERVICE_KEY', value: process.env.SUPABASE_SERVICE_KEY },
+    { name: 'SUPABASE_SECRET_KEY', value: process.env.SUPABASE_SECRET_KEY },
+  ];
+
+  let placeholderFound = false;
+
+  for (const candidate of candidates) {
+    if (candidate.value) {
+      if (!isPlaceholder(candidate.value)) {
+        return { key: candidate.value, source: candidate.name, placeholderDetected: placeholderFound };
+      }
+      placeholderFound = true;
+    }
+  }
+
+  return { key: null, source: 'none', placeholderDetected: placeholderFound };
+}
+
 interface SupabaseValidatedConfig {
   url: string;
   serviceRoleKey: string;
@@ -112,38 +193,42 @@ interface ValidationResult {
 }
 
 /**
- * Validates that SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are present and correctly formatted.
- * Supports both modern Supabase secret keys and legacy service_role JWTs.
- * Rejects public anon/publishable keys for administrative uploads.
- * Never prints secret values.
+ * Validates Supabase Storage configuration.
+ * Supports modern sb_secret_ keys and legacy service_role JWTs.
+ * Strictly rejects public anon/publishable keys.
+ * Logs safe server-side diagnostics without printing secrets.
  */
 function validateSupabaseConfig(): ValidationResult {
-  const rawUrl = process.env.SUPABASE_URL;
-  const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const urlCandidate = resolveCandidateUrl();
+  const keyCandidate = resolveCandidateKey();
 
-  // Unconfigured state (e.g. offline local development)
-  if (!rawUrl && !rawKey) {
+  // If neither URL nor key is configured (e.g. offline local development)
+  if (!urlCandidate.url && !keyCandidate.key) {
+    logServerDiagnostics(urlCandidate, keyCandidate, { config: null });
     return { config: null };
   }
 
   // 1. Presence checks
-  if (!rawUrl || isPlaceholder(rawUrl)) {
-    return {
+  if (!urlCandidate.url) {
+    const res: ValidationResult = {
       config: null,
       error: 'Storage service URL is missing or set to a placeholder.',
     };
+    logServerDiagnostics(urlCandidate, keyCandidate, res);
+    return res;
   }
 
-  if (!rawKey || isPlaceholder(rawKey)) {
-    return {
+  if (!keyCandidate.key) {
+    const res: ValidationResult = {
       config: null,
       error: 'Storage service role secret key is missing or set to a placeholder.',
     };
+    logServerDiagnostics(urlCandidate, keyCandidate, res);
+    return res;
   }
 
-  // 2. URL Format & Project Reference extraction
-  let cleanUrl = rawUrl.trim().replace(/^["']|["']$/g, '').trim();
-  cleanUrl = cleanUrl.replace(/\/+$/, '');
+  // 2. URL Format & normalization
+  let cleanUrl = urlCandidate.url.trim().replace(/^["']|["']$/g, '').trim().replace(/\/+$/, '');
 
   if (!/^https?:\/\//i.test(cleanUrl)) {
     cleanUrl = `https://${cleanUrl}`;
@@ -153,99 +238,191 @@ function validateSupabaseConfig(): ValidationResult {
   try {
     parsedUrl = new URL(cleanUrl);
   } catch {
-    return {
+    const res: ValidationResult = {
       config: null,
       error: 'Storage service URL is not a valid URL.',
     };
+    logServerDiagnostics(urlCandidate, keyCandidate, res);
+    return res;
   }
 
   if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
-    return {
+    const res: ValidationResult = {
       config: null,
       error: `Storage service URL protocol "${parsedUrl.protocol}" is invalid. URL must start with https://`,
     };
+    logServerDiagnostics(urlCandidate, keyCandidate, res);
+    return res;
   }
 
   const hostname = parsedUrl.hostname.toLowerCase();
   const hostParts = hostname.split('.');
   if (hostParts.length < 2 || isPlaceholder(hostname)) {
-    return {
+    const res: ValidationResult = {
       config: null,
       error: `Storage service hostname "${hostname}" is invalid.`,
     };
+    logServerDiagnostics(urlCandidate, keyCandidate, res);
+    return res;
   }
 
   const urlProjectRef = hostParts[0];
+  const normalizedOrigin = parsedUrl.origin;
 
   // 3. Service-Role Key Format check
-  const cleanKey = rawKey.trim().replace(/^["']|["']$/g, '').trim();
+  const cleanKey = keyCandidate.key
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/[\r\n\t]/g, '')
+    .trim();
 
   // Guard against accidental configuration of publishable key
   if (cleanKey.startsWith('sb_publishable_')) {
-    return {
+    const res: ValidationResult = {
       config: null,
       error: 'A publishable key was provided where a secret key is required.',
     };
+    logServerDiagnostics(urlCandidate, keyCandidate, res);
+    return res;
   }
 
-  // Case A: Modern Secret API Key
+  // Case A: Modern Secret API Key (sb_secret_...)
   if (cleanKey.startsWith('sb_secret_')) {
     if (cleanKey.length < 20) {
-      return {
+      const res: ValidationResult = {
         config: null,
         error: 'Provided secret key is too short or invalid.',
       };
+      logServerDiagnostics(urlCandidate, keyCandidate, res);
+      return res;
     }
 
-    return {
+    const res: ValidationResult = {
       config: {
-        url: cleanUrl,
+        url: normalizedOrigin,
         serviceRoleKey: cleanKey,
         projectRef: urlProjectRef,
       },
     };
+    logServerDiagnostics(urlCandidate, keyCandidate, res);
+    return res;
   }
 
-  // Case B: Legacy Compact JWS / JWT
+  // Case B: Legacy Compact JWS / JWT (eyJ...)
   const keyParts = cleanKey.split('.');
   if (keyParts.length === 3) {
     const claims = parseJwtClaims(cleanKey);
     if (!claims) {
-      return {
+      const res: ValidationResult = {
         config: null,
         error: 'Could not parse claims from the provided secret token.',
       };
+      logServerDiagnostics(urlCandidate, keyCandidate, res);
+      return res;
     }
 
     if (claims.role !== 'service_role') {
-      return {
+      const res: ValidationResult = {
         config: null,
-        error: "Provided secret key does not have the required service_role permissions.",
+        error: 'Provided secret key does not have the required service_role permissions.',
       };
+      logServerDiagnostics(urlCandidate, keyCandidate, res);
+      return res;
     }
 
     // Verify that key and URL belong to the exact same Supabase project
     if (claims.ref && claims.ref.toLowerCase() !== urlProjectRef) {
-      return {
+      const res: ValidationResult = {
         config: null,
         error: 'Credential project reference does not match the configured storage URL hostname.',
       };
+      logServerDiagnostics(urlCandidate, keyCandidate, res);
+      return res;
     }
 
-    return {
+    const res: ValidationResult = {
       config: {
-        url: cleanUrl,
+        url: normalizedOrigin,
         serviceRoleKey: cleanKey,
         projectRef: urlProjectRef,
       },
     };
+    logServerDiagnostics(urlCandidate, keyCandidate, res);
+    return res;
   }
 
   // Unrecognized key format
-  return {
+  const res: ValidationResult = {
     config: null,
     error: 'Unrecognized secret key format. Ensure a valid secret key is configured.',
   };
+  logServerDiagnostics(urlCandidate, keyCandidate, res);
+  return res;
+}
+
+/**
+ * Safe server-side diagnostics logger.
+ * Never prints secret values, raw tokens, or sensitive credentials.
+ */
+function logServerDiagnostics(
+  urlCandidate: { url: string | null; source: string; placeholderDetected: boolean },
+  keyCandidate: { key: string | null; source: string; placeholderDetected: boolean },
+  result: ValidationResult
+) {
+  const isProd =
+    process.env.NODE_ENV === 'production' ||
+    process.env.NETLIFY === 'true' ||
+    Boolean(process.env.NETLIFY);
+
+  let keyFormat = 'none';
+  if (keyCandidate.key) {
+    const clean = keyCandidate.key.trim().replace(/^["']|["']$/g, '');
+    if (clean.startsWith('sb_secret_')) {
+      keyFormat = 'modern_secret_key';
+    } else if (clean.startsWith('sb_publishable_')) {
+      keyFormat = 'publishable_key_rejected';
+    } else if (clean.split('.').length === 3) {
+      const claims = parseJwtClaims(clean);
+      if (claims?.role === 'service_role') {
+        keyFormat = 'legacy_jwt_service_role';
+      } else if (claims?.role === 'anon') {
+        keyFormat = 'legacy_jwt_anon_rejected';
+      } else {
+        keyFormat = `legacy_jwt_${claims?.role || 'invalid'}`;
+      }
+    } else {
+      keyFormat = 'unknown_key_format';
+    }
+  }
+
+  let resolvedHostname = 'none';
+  if (result.config?.url) {
+    try {
+      resolvedHostname = new URL(result.config.url).hostname;
+    } catch {
+      resolvedHostname = 'invalid_hostname';
+    }
+  }
+
+  const diagnosticPayload = {
+    environment: isProd ? 'production' : 'development',
+    urlConfigured: Boolean(urlCandidate.url),
+    urlSource: urlCandidate.source,
+    urlPlaceholderDetected: urlCandidate.placeholderDetected,
+    keyConfigured: Boolean(keyCandidate.key),
+    keySource: keyCandidate.source,
+    keyPlaceholderDetected: keyCandidate.placeholderDetected,
+    keyFormat,
+    resolvedHostname,
+    status: result.config ? 'configured' : 'unavailable',
+    error: result.error || null,
+  };
+
+  if (result.error) {
+    console.warn('[Upload Config Diagnostics]:', diagnosticPayload);
+  } else if (!isProd) {
+    console.info('[Upload Config Diagnostics]:', diagnosticPayload);
+  }
 }
 
 // WebSocket transport fallback for server environments
