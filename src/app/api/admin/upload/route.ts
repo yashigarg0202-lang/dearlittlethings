@@ -1,3 +1,6 @@
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -64,10 +67,7 @@ function isPlaceholder(value?: string | null): boolean {
   const clean = value.trim().toLowerCase().replace(/^["']|["']$/g, '');
   if (!clean) return true;
   return (
-    clean.includes('your_supabase_url') ||
-    clean.includes('your_supabase') ||
-    clean.includes('your_service_role_key') ||
-    clean.includes('your_') ||
+    clean.startsWith('your_') ||
     clean.includes('placeholder') ||
     clean.includes('example.com') ||
     clean.includes('<project-ref>') ||
@@ -113,7 +113,7 @@ interface ValidationResult {
 
 /**
  * Validates that SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are present and correctly formatted.
- * Supports both modern Supabase secret keys (sb_secret_...) and legacy service_role JWTs (eyJ...).
+ * Supports both modern Supabase secret keys and legacy service_role JWTs.
  * Rejects public anon/publishable keys for administrative uploads.
  * Never prints secret values.
  */
@@ -130,16 +130,14 @@ function validateSupabaseConfig(): ValidationResult {
   if (!rawUrl || isPlaceholder(rawUrl)) {
     return {
       config: null,
-      error:
-        "Supabase configuration error: SUPABASE_URL is missing or set to a placeholder. Set SUPABASE_URL to your Supabase project URL (e.g., https://<project-ref>.supabase.co) in Netlify / environment variables.",
+      error: 'Storage service URL is missing or set to a placeholder.',
     };
   }
 
   if (!rawKey || isPlaceholder(rawKey)) {
     return {
       config: null,
-      error:
-        "Supabase configuration error: SUPABASE_SERVICE_ROLE_KEY is missing or set to a placeholder. Set SUPABASE_SERVICE_ROLE_KEY to your project's secret key (sb_secret_... or legacy service_role JWT) in Netlify / environment variables.",
+      error: 'Storage service role secret key is missing or set to a placeholder.',
     };
   }
 
@@ -157,16 +155,14 @@ function validateSupabaseConfig(): ValidationResult {
   } catch {
     return {
       config: null,
-      error:
-        "Supabase configuration error: SUPABASE_URL is not a valid URL. Ensure it starts with https:// (e.g., https://<project-ref>.supabase.co).",
+      error: 'Storage service URL is not a valid URL.',
     };
   }
 
   if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
     return {
       config: null,
-      error:
-        `Supabase configuration error: Invalid SUPABASE_URL protocol "${parsedUrl.protocol}". URL must start with https://`,
+      error: `Storage service URL protocol "${parsedUrl.protocol}" is invalid. URL must start with https://`,
     };
   }
 
@@ -175,8 +171,7 @@ function validateSupabaseConfig(): ValidationResult {
   if (hostParts.length < 2 || isPlaceholder(hostname)) {
     return {
       config: null,
-      error:
-        `Supabase configuration error: Invalid SUPABASE_URL hostname "${hostname}". Expected format: https://<project-ref>.supabase.co`,
+      error: `Storage service hostname "${hostname}" is invalid.`,
     };
   }
 
@@ -189,18 +184,16 @@ function validateSupabaseConfig(): ValidationResult {
   if (cleanKey.startsWith('sb_publishable_')) {
     return {
       config: null,
-      error:
-        "Supabase configuration error: SUPABASE_SERVICE_ROLE_KEY is configured with a publishable key ('sb_publishable_...'). Administrative storage uploads require the privileged secret key ('sb_secret_...' or legacy 'service_role' JWT). In Supabase Dashboard > Project Settings > API, copy the secret key.",
+      error: 'A publishable key was provided where a secret key is required.',
     };
   }
 
-  // Case A: Modern Secret API Key (sb_secret_...)
+  // Case A: Modern Secret API Key
   if (cleanKey.startsWith('sb_secret_')) {
     if (cleanKey.length < 20) {
       return {
         config: null,
-        error:
-          "Supabase configuration error: SUPABASE_SERVICE_ROLE_KEY is too short to be a valid modern Supabase secret key. Verify the secret key copied from Supabase Dashboard > Project Settings > API.",
+        error: 'Provided secret key is too short or invalid.',
       };
     }
 
@@ -213,30 +206,21 @@ function validateSupabaseConfig(): ValidationResult {
     };
   }
 
-  // Case B: Legacy Compact JWS / JWT (eyJ...)
+  // Case B: Legacy Compact JWS / JWT
   const keyParts = cleanKey.split('.');
   if (keyParts.length === 3) {
     const claims = parseJwtClaims(cleanKey);
     if (!claims) {
       return {
         config: null,
-        error:
-          "Supabase configuration error: Could not parse claims from SUPABASE_SERVICE_ROLE_KEY. The key payload is not valid base64url-encoded JSON.",
+        error: 'Could not parse claims from the provided secret token.',
       };
     }
 
     if (claims.role !== 'service_role') {
-      if (claims.role === 'anon') {
-        return {
-          config: null,
-          error:
-            "Supabase configuration error: SUPABASE_SERVICE_ROLE_KEY has the 'anon' public role. Administrative storage uploads require the privileged 'service_role' secret key. In Supabase Dashboard > Project Settings > API, copy the 'service_role' key (not the 'anon' key).",
-        };
-      }
       return {
         config: null,
-        error:
-          `Supabase configuration error: SUPABASE_SERVICE_ROLE_KEY has role '${claims.role || 'unknown'}' instead of 'service_role'. Administrative storage uploads require the 'service_role' secret key.`,
+        error: "Provided secret key does not have the required service_role permissions.",
       };
     }
 
@@ -244,8 +228,7 @@ function validateSupabaseConfig(): ValidationResult {
     if (claims.ref && claims.ref.toLowerCase() !== urlProjectRef) {
       return {
         config: null,
-        error:
-          `Supabase configuration error: Credential project mismatch. The SUPABASE_SERVICE_ROLE_KEY belongs to project '${claims.ref}', but SUPABASE_URL is configured for project '${urlProjectRef}'. Both must belong to the exact same Supabase project.`,
+        error: 'Credential project reference does not match the configured storage URL hostname.',
       };
     }
 
@@ -261,8 +244,7 @@ function validateSupabaseConfig(): ValidationResult {
   // Unrecognized key format
   return {
     config: null,
-    error:
-      "Supabase configuration error: Invalid SUPABASE_SERVICE_ROLE_KEY format. Expected either a modern secret key (starting with 'sb_secret_...') or a legacy 3-part service_role JWT (starting with 'eyJ...'). Verify the key in Supabase Dashboard > Project Settings > API.",
+    error: 'Unrecognized secret key format. Ensure a valid secret key is configured.',
   };
 }
 
@@ -300,7 +282,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const files = formData.getAll('files') as File[];
 
-    // If single file uploaded under 'file'
+    // If single file uploaded under file
     if (files.length === 0) {
       const singleFile = formData.get('file') as File | null;
       if (singleFile) {
@@ -317,7 +299,10 @@ export async function POST(req: NextRequest) {
 
     if (supabaseSetup.error) {
       console.error('[Upload Config Diagnostic Error]:', supabaseSetup.error);
-      return NextResponse.json({ error: supabaseSetup.error }, { status: 503 });
+      return NextResponse.json(
+        { error: 'Image upload service is currently unavailable. Please contact the administrator.' },
+        { status: 503 }
+      );
     }
 
     const isProduction =
@@ -327,11 +312,9 @@ export async function POST(req: NextRequest) {
 
     // In production, serverless filesystem is read-only/ephemeral; Supabase Storage is mandatory
     if (!supabaseSetup.config && isProduction) {
+      console.error('[Upload Config Diagnostic Error]: Supabase Storage is not configured for production uploads.');
       return NextResponse.json(
-        {
-          error:
-            "Supabase Storage is required in production. Please configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your Netlify Environment variables.",
-        },
+        { error: 'Image upload service is not configured for production.' },
         { status: 503 }
       );
     }
@@ -394,7 +377,7 @@ export async function POST(req: NextRequest) {
       let publicUrl = '';
 
       if (supabase) {
-        // Upload directly via official Supabase client to 'product-images' bucket
+        // Upload directly via official Supabase client to product-images bucket
         const { error: uploadError } = await supabase.storage
           .from('product-images')
           .upload(safeFilename, buffer, {
@@ -476,7 +459,11 @@ export async function DELETE(req: NextRequest) {
       const filename = fileUrl.split('/product-images/').pop()?.split('?')[0];
       const supabaseSetup = validateSupabaseConfig();
       if (supabaseSetup.error) {
-        return NextResponse.json({ error: supabaseSetup.error }, { status: 503 });
+        console.error('[Upload Delete Config Error]:', supabaseSetup.error);
+        return NextResponse.json(
+          { error: 'Image deletion service is currently unavailable.' },
+          { status: 503 }
+        );
       }
       if (filename && supabaseSetup.config) {
         const supabase = getSupabaseClient(supabaseSetup.config.url, supabaseSetup.config.serviceRoleKey);
