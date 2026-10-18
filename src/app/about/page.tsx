@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -63,12 +64,13 @@ export default function AboutPage() {
           backgroundColor: 'var(--muted)',
         }}
       >
-        <img
+        <Image
           src="/assets/hero.jpg"
           alt="Studio workbench with crochet strawberry keyring and stickers"
+          fill
+          priority
+          sizes="(max-width: 1200px) 100vw, 1200px"
           style={{
-            width: '100%',
-            height: '100%',
             objectFit: 'cover',
           }}
         />

@@ -68,6 +68,7 @@ export default function ProductDetailClient({
   const [selectedImageIndex, setSelectedImageIndex] = useState(initialIdx >= 0 ? initialIdx : 0);
   const [quantity, setQuantity] = useState(1);
   const [addedNotice, setAddedNotice] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   const images = product.images.length > 0 ? product.images : [
     { id: '1', url: '/placeholders/product-stickers-1.svg', altText: product.title },
@@ -78,11 +79,16 @@ export default function ProductDetailClient({
       e.preventDefault();
       e.stopPropagation();
     }
-    if (selectedVariant.stock <= 0) return;
-    const res = await addToCart(selectedVariant.id, quantity);
-    if (res.success) {
-      setAddedNotice(true);
-      setTimeout(() => setAddedNotice(false), 2500);
+    if (selectedVariant.stock <= 0 || isAdding) return;
+    setIsAdding(true);
+    try {
+      const res = await addToCart(selectedVariant.id, quantity);
+      if (res.success) {
+        setAddedNotice(true);
+        setTimeout(() => setAddedNotice(false), 2500);
+      }
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -131,7 +137,6 @@ export default function ProductDetailClient({
               alt={images[selectedImageIndex]?.altText || product.title}
               fill
               priority
-              unoptimized
               sizes="(max-width: 768px) 100vw, 50vw"
               style={{ objectFit: 'cover' }}
             />
@@ -164,7 +169,7 @@ export default function ProductDetailClient({
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  <Image src={img.url} alt={img.altText} fill unoptimized style={{ objectFit: 'cover' }} />
+                  <Image src={img.url} alt={img.altText} fill sizes="76px" style={{ objectFit: 'cover' }} />
                 </button>
               ))}
             </div>
@@ -387,7 +392,7 @@ export default function ProductDetailClient({
                 e.stopPropagation();
                 handleAddToCart();
               }}
-              disabled={isLoading || selectedVariant.stock <= 0}
+              disabled={isLoading || isAdding || selectedVariant.stock <= 0}
               className="btn-ink"
               style={{
                 flex: 1,
@@ -398,7 +403,7 @@ export default function ProductDetailClient({
                 opacity: selectedVariant.stock <= 0 ? 0.6 : 1,
               }}
             >
-              {selectedVariant.stock <= 0 ? 'sold out in studio' : isLoading ? 'adding...' : '+ add to bag'}
+              {selectedVariant.stock <= 0 ? 'sold out in studio' : isAdding || isLoading ? 'adding...' : '+ add to bag'}
             </button>
           </div>
 

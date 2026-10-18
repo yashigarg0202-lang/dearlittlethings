@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
@@ -232,6 +233,17 @@ export async function POST(req: NextRequest) {
           emailNotificationError: emailMessage,
         },
       });
+    }
+
+    try {
+      for (const item of cartCalc.items as CartItemWithVariant[]) {
+        if (item.variant?.product?.slug) {
+          revalidatePath(`/product/${item.variant.product.slug}`);
+        }
+      }
+      revalidatePath('/shop');
+    } catch (revalidateErr) {
+      console.warn('Path revalidation failed:', revalidateErr);
     }
 
     return NextResponse.json({

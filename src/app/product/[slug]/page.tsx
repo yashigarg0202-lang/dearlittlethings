@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { cache } from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import type { Prisma } from '@prisma/client';
@@ -6,7 +6,7 @@ import prisma from '@/lib/prisma';
 import ProductDetailClient from '@/components/ProductDetailClient';
 import ProductCard from '@/components/ProductCard';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 type ProductPageItem = Prisma.ProductGetPayload<{
   include: {
@@ -32,12 +32,21 @@ interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }
 
+// Deduplicate product query across generateMetadata and ProductPage via React.cache
+const getProductBySlug = cache(async (slug: string): Promise<ProductPageItem | null> => {
+  return prisma.product.findUnique({
+    where: { slug },
+    include: {
+      category: true,
+      images: { orderBy: { sortOrder: 'asc' } },
+      variants: { orderBy: { price: 'asc' } },
+    },
+  });
+});
+
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = await prisma.product.findUnique({
-    where: { slug },
-    include: { images: true, category: true },
-  });
+  const product = await getProductBySlug(slug);
 
   if (!product) return { title: 'Product Not Found | dear little things' };
 
@@ -55,23 +64,31 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
 
-  const product: ProductPageItem | null = await prisma.product.findUnique({
-    where: { slug },
-    include: {
-      category: true,
-      images: { orderBy: { sortOrder: 'asc' } },
-      variants: { orderBy: { price: 'asc' } },
-    },
-  });
+  const product = await getProductBySlug(slug);
 
   if (!product || product.status !== 'ACTIVE') {
     notFound();
   }
 
-  // Fetch configured shipping rates
-  const domesticZone = await prisma.shippingZone.findFirst({
-    include: { rates: { where: { isActive: true }, orderBy: { rate: 'asc' } } },
-  });
+  // Fetch configured shipping rates and related products concurrently in parallel
+  const [domesticZone, relatedProducts] = await Promise.all([
+    prisma.shippingZone.findFirst({
+      include: { rates: { where: { isActive: true }, orderBy: { rate: 'asc' } } },
+    }),
+    prisma.product.findMany({
+      where: {
+        categoryId: product.categoryId,
+        id: { not: product.id },
+        status: 'ACTIVE',
+      },
+      include: {
+        images: { orderBy: { sortOrder: 'asc' } },
+        variants: { orderBy: { price: 'asc' } },
+        category: true,
+      },
+      take: 3,
+    }),
+  ]);
 
   const shippingRates = domesticZone?.rates.map((r: ShippingRateRow) => ({
     name: r.name,
@@ -79,21 +96,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
     estimatedDaysMin: r.estimatedDaysMin,
     estimatedDaysMax: r.estimatedDaysMax,
   })) || [];
-
-  // Related products (same category)
-  const relatedProducts: RelatedProduct[] = await prisma.product.findMany({
-    where: {
-      categoryId: product.categoryId,
-      id: { not: product.id },
-      status: 'ACTIVE',
-    },
-    include: {
-      images: { orderBy: { sortOrder: 'asc' } },
-      variants: { orderBy: { price: 'asc' } },
-      category: true,
-    },
-    take: 3,
-  });
 
   // Schema.org structured data JSON-LD
   const jsonLd = {

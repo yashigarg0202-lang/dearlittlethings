@@ -13,9 +13,16 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({
-      rates: zone?.rates || [],
-    });
+    return NextResponse.json(
+      {
+        rates: zone?.rates || [],
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (error) {
     console.error('Error fetching shipping rates:', error);
     return NextResponse.json({ error: 'Failed to retrieve shipping rates' }, { status: 500 });

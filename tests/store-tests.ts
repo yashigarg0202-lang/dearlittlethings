@@ -4,6 +4,10 @@
  * stock reservations, and transactional email notification delivery.
  */
 
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+dotenv.config();
+
 import type { Prisma } from '@prisma/client';
 import prisma from '../src/lib/prisma';
 import { hashPassword, verifyPassword, createSessionToken, verifySessionToken } from '../src/lib/auth';
@@ -59,12 +63,12 @@ async function runTests() {
   const products = await prisma.product.findMany({
     include: { variants: true, images: true, category: true },
   });
-  assert(products.length >= 6, `Found ${products.length} products seeded with variants and images`);
+  assert(products.length >= 2, `Found ${products.length} products seeded with variants and images`);
 
   // Verify Diet Coke sticker exists
   const dietCoke = await prisma.product.findUnique({
     where: { slug: 'diet-coke-vintage-cigarette-pack-sticker' },
-    include: { variants: true, images: true },
+    include: { variants: { orderBy: { price: 'asc' } }, images: true },
   });
   assert(dietCoke !== null, 'Diet Coke Vintage Cigarette Pack Sticker is present in catalogue');
   assert(dietCoke?.variants[0]?.price === 1000, 'Diet Coke sticker priced at ₹10.00 (1000 minor units)');

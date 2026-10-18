@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
@@ -34,6 +35,15 @@ export async function PATCH(req: NextRequest) {
         details: `Updated stock of "${variant.product.title}" (${variant.name}, SKU ${variant.sku}) to ${stock}`,
       },
     });
+
+    try {
+      revalidatePath('/shop');
+      if (variant.product?.slug) {
+        revalidatePath(`/product/${variant.product.slug}`);
+      }
+    } catch (revalidateErr) {
+      console.warn('Path revalidation failed:', revalidateErr);
+    }
 
     return NextResponse.json({ success: true, variant });
   } catch (error: unknown) {

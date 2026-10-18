@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCart, type CartItemData } from '@/context/CartContext';
 import { formatINR } from '@/lib/currency';
 
@@ -203,6 +204,7 @@ export default function CartDrawer() {
                     {/* Thumbnail */}
                     <div
                       style={{
+                        position: 'relative',
                         width: '4.5rem',
                         height: '5.5rem',
                         flexShrink: 0,
@@ -213,12 +215,12 @@ export default function CartDrawer() {
                       }}
                     >
                       {image ? (
-                        <img
+                        <Image
                           src={image}
                           alt={title}
+                          fill
+                          sizes="72px"
                           style={{
-                            width: '100%',
-                            height: '100%',
                             objectFit: 'cover',
                           }}
                         />
