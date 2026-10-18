@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, AuthError } from '@/lib/auth';
 
 const ProductImageInputSchema = z.object({
   id: z.string().optional(),
@@ -114,6 +114,10 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Error fetching admin products:', error);
     const message = error instanceof Error ? error.message : 'Failed to fetch products';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -281,6 +285,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, product });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Error creating product:', error);
     const message = error instanceof Error ? error.message : 'Failed to create product';
     return NextResponse.json({ error: message }, { status: 500 });

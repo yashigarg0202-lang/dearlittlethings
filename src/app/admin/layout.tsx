@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import AdminLogoutButton from '@/components/AdminLogoutButton';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Studio Admin Portal | Mio Studio',
   robots: {
@@ -19,8 +21,83 @@ export default async function AdminLayout({
 }) {
   const user = await getCurrentUser();
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user) {
     redirect('/login?admin=1');
+  }
+
+  if (user.role !== 'ADMIN') {
+    return (
+      <div
+        style={{
+          backgroundColor: 'var(--bg-primary)',
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem',
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-hairline)',
+            borderRadius: '8px',
+            maxWidth: '480px',
+            width: '100%',
+            padding: '2.5rem',
+            textAlign: 'center',
+            boxShadow: '0 4px 20px rgba(58, 43, 36, 0.05)',
+          }}
+        >
+          <h1
+            style={{
+              fontFamily: 'var(--font-serif)',
+              fontSize: '1.75rem',
+              color: 'var(--accent-terracotta)',
+              margin: '0 0 0.5rem 0',
+            }}
+          >
+            403 &bull; Access Denied
+          </h1>
+          <p
+            style={{
+              fontSize: '0.95rem',
+              color: 'var(--text-secondary)',
+              lineHeight: 1.5,
+              margin: '0 0 1.5rem 0',
+            }}
+          >
+            You are signed in as <strong>{user.email}</strong>, but this account does not have administrator privileges to access the studio admin portal.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <Link
+              href="/account"
+              className="btn-primary"
+              style={{
+                padding: '0.65rem 1.25rem',
+                fontSize: '0.88rem',
+                textDecoration: 'none',
+              }}
+            >
+              Customer Account
+            </Link>
+            <Link
+              href="/"
+              style={{
+                padding: '0.65rem 1.25rem',
+                fontSize: '0.88rem',
+                border: '1px solid var(--border-hairline)',
+                color: 'var(--text-primary)',
+                textDecoration: 'none',
+                borderRadius: '4px',
+              }}
+            >
+              Return to Shop
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const navLinks = [

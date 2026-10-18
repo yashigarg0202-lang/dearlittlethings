@@ -1,18 +1,31 @@
 import bcrypt from 'bcryptjs';
-import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import prisma from './prisma';
+import {
+  SESSION_COOKIE_NAME,
+  GUEST_COOKIE_NAME,
+  type SessionPayload,
+  getJwtSecret,
+  createSessionToken,
+  verifySessionToken,
+} from './session';
 
-const JWT_SECRET_STRING = process.env.SESSION_SECRET || 'mio-studio-very-secure-random-dev-secret-key-2026';
-const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_STRING);
-export const SESSION_COOKIE_NAME = 'mio_session';
-export const GUEST_COOKIE_NAME = 'mio_guest_id';
+export {
+  SESSION_COOKIE_NAME,
+  GUEST_COOKIE_NAME,
+  type SessionPayload,
+  getJwtSecret,
+  createSessionToken,
+  verifySessionToken,
+};
 
-export interface SessionPayload {
-  userId: string;
-  email: string;
-  role: string;
-  name?: string | null;
+export class AuthError extends Error {
+  status: number;
+  constructor(message: string, status: number = 401) {
+    super(message);
+    this.name = 'AuthError';
+    this.status = status;
+  }
 }
 
 const COMMON_WEAK_PASSWORDS = new Set([
@@ -50,28 +63,6 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export async function createSessionToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(JWT_SECRET);
-}
-
-export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return {
-      userId: payload.userId as string,
-      email: payload.email as string,
-      role: payload.role as string,
-      name: (payload.name as string) || null,
-    };
-  } catch {
-    return null;
-  }
-}
-
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
@@ -103,15 +94,18 @@ export async function getCurrentUser() {
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) {
-    throw new Error('Unauthorized');
+    throw new AuthError('Unauthorized', 401);
   }
   return user;
 }
 
 export async function requireAdmin() {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'ADMIN') {
-    throw new Error('Forbidden: Admin access required');
+  if (!user) {
+    throw new AuthError('Unauthorized: Authentication required', 401);
+  }
+  if (user.role !== 'ADMIN') {
+    throw new AuthError('Forbidden: Admin access required', 403);
   }
   return user;
 }

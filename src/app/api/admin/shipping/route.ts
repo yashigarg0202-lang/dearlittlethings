@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, AuthError } from '@/lib/auth';
 
 const CreateRateSchema = z.object({
   zoneId: z.string().min(1),
@@ -57,6 +57,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, rate });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Shipping rate creation error:', error);
     const message = error instanceof Error ? error.message : 'Failed to create rate';
     return NextResponse.json({ error: message }, { status: 500 });

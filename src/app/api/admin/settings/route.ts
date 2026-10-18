@@ -1,22 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, AuthError } from '@/lib/auth';
 
 export async function GET() {
+  try {
+    await requireAdmin();
+  } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
+    return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
+  }
+
   try {
     const settings = await prisma.siteSettings.findUnique({
       where: { id: 'default' },
     });
     return NextResponse.json({ settings });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Settings fetch error:', error);
-    return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to load settings';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
+  let admin;
   try {
-    const admin = await requireAdmin();
+    admin = await requireAdmin();
+  } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
+    return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
+  }
+
+  try {
     const body = await req.json();
 
     const updated = await prisma.siteSettings.upsert({

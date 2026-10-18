@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, AuthError } from '@/lib/auth';
 
 const StockUpdateSchema = z.object({
   variantId: z.string().min(1),
@@ -47,6 +47,10 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ success: true, variant });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Inventory update error:', error);
     const message = error instanceof Error ? error.message : 'Failed to update stock';
     return NextResponse.json({ error: message }, { status: 500 });

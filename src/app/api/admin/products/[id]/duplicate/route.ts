@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, AuthError } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -95,6 +95,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, product: duplicated });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Error duplicating product:', error);
     const message = error instanceof Error ? error.message : 'Failed to duplicate product';
     return NextResponse.json({ error: message }, { status: 500 });

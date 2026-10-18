@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, AuthError } from '@/lib/auth';
 
 const BulkActionSchema = z.object({
   ids: z.array(z.string()).min(1, 'Please select at least one product.'),
@@ -70,6 +70,10 @@ export async function POST(req: NextRequest) {
       message: `Successfully executed ${action.toLowerCase()} on ${updatedCount} product(s).`,
     });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Error executing bulk action:', error);
     const message = error instanceof Error ? error.message : 'Bulk action failed';
     return NextResponse.json({ error: message }, { status: 500 });

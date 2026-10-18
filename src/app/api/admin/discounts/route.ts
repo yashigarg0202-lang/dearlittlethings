@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, AuthError } from '@/lib/auth';
 
 const CreateDiscountSchema = z.object({
   code: z.string().min(2),
@@ -55,6 +55,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, discount });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Error creating discount:', error);
     const message = error instanceof Error ? error.message : 'Failed to create discount';
     return NextResponse.json({ error: message }, { status: 500 });

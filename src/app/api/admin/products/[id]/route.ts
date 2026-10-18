@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, AuthError } from '@/lib/auth';
 
 const ProductImageInputSchema = z.object({
   id: z.string().optional(),
@@ -73,6 +73,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, product });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Error fetching admin product:', error);
     const message = error instanceof Error ? error.message : 'Failed to fetch product';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -282,6 +286,10 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, product: finalProduct });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Error updating product:', error);
     const message = error instanceof Error ? error.message : 'Failed to update product';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -330,6 +338,10 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
+    if (error instanceof AuthError || (error as any)?.status === 401 || (error as any)?.status === 403) {
+      const status = (error as any).status || 401;
+      return NextResponse.json({ error: (error as Error).message }, { status });
+    }
     console.error('Error deleting product:', error);
     const message = error instanceof Error ? error.message : 'Failed to delete product';
     return NextResponse.json({ error: message }, { status: 500 });

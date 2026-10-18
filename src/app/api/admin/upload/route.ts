@@ -449,10 +449,11 @@ export async function POST(req: NextRequest) {
     // 1. Enforce admin authentication
     try {
       await requireAdmin();
-    } catch {
+    } catch (authError: any) {
+      const status = authError?.status === 403 ? 403 : 401;
       return NextResponse.json(
-        { error: 'Unauthorized: Admin authentication is required to upload product images' },
-        { status: 401 }
+        { error: authError?.message || (status === 403 ? 'Forbidden: Admin access required' : 'Unauthorized: Admin authentication is required to upload product images') },
+        { status }
       );
     }
 
@@ -611,10 +612,11 @@ export async function DELETE(req: NextRequest) {
     // 1. Enforce admin authentication
     try {
       await requireAdmin();
-    } catch {
+    } catch (authError: any) {
+      const status = authError?.status === 403 ? 403 : 401;
       return NextResponse.json(
-        { error: 'Unauthorized: Admin authentication is required to delete product images' },
-        { status: 401 }
+        { error: authError?.message || (status === 403 ? 'Forbidden: Admin access required' : 'Unauthorized: Admin authentication is required to delete product images') },
+        { status }
       );
     }
 
