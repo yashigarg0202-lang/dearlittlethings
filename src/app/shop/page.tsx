@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
 import { sanitizeProductImages } from '@/lib/images';
+import { stripHtmlToPlainText } from '@/lib/sanitize-description';
 
 export const revalidate = 60;
 
@@ -109,6 +110,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
 
   const sanitizedProducts = products.map((product) => ({
     ...product,
+    description: stripHtmlToPlainText(product.description),
     images: sanitizeProductImages(product.images),
   }));
 

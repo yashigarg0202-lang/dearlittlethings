@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { formatINR } from '@/lib/currency';
+import { sanitizeHtmlDescription } from '@/lib/sanitize-description';
 
 interface ProductImageItem {
   id: string;
@@ -244,7 +245,7 @@ export default function ProductDetailClient({
                 marginBottom: '2.5rem',
                 fontFamily: 'var(--font-sans)',
               }}
-              dangerouslySetInnerHTML={{ __html: product.description }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtmlDescription(product.description) }}
             />
           ) : (
             <p

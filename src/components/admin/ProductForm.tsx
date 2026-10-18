@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import ProductImageUploader, { UploadedImageItem } from '@/components/ProductImageUploader';
 import RichTextEditor from './RichTextEditor';
 import VariantManager, { VariantFormData } from './VariantManager';
+import { stripHtmlToPlainText } from '@/lib/sanitize-description';
 
 export interface ProductFormData {
   id?: string;
@@ -586,7 +587,7 @@ export default function ProductForm({
               </div>
               <div style={{ fontSize: '0.85rem', color: '#4d5156', marginTop: '0.25rem', lineHeight: 1.5 }}>
                 {seoDescription ||
-                  (description ? description.replace(/<[^>]*>/g, '').slice(0, 150) + '...' : 'Thoughtfully designed handmade studio object crafted for everyday wonder.')}
+                  (description ? stripHtmlToPlainText(description).slice(0, 150) + '...' : 'Thoughtfully designed handmade studio object crafted for everyday wonder.')}
               </div>
             </div>
 

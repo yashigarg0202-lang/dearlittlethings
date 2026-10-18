@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { formatINR } from '@/lib/currency';
+import { stripHtmlToPlainText } from '@/lib/sanitize-description';
 
 export interface ProductCardProps {
   id: string;
@@ -37,6 +38,8 @@ export default function ProductCard({
   const { addToCart } = useCart();
   const [isAdding, setIsAdding] = useState(false);
   const [added, setAdded] = useState(false);
+
+  const plainDescription = description ? stripHtmlToPlainText(description) : '';
 
   const primaryImage = images.find((img) => img.isPrimary) || images[0] || {
     url: '/placeholders/product-stickers-1.svg',
@@ -142,7 +145,7 @@ export default function ProductCard({
         </div>
 
         {/* Short Description */}
-        {description && (
+        {plainDescription && (
           <p
             style={{
               marginTop: '0.35rem',
@@ -156,7 +159,7 @@ export default function ProductCard({
               marginRight: 0,
             }}
           >
-            {description}
+            {plainDescription}
           </p>
         )}
       </Link>

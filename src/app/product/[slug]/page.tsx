@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma';
 import ProductDetailClient from '@/components/ProductDetailClient';
 import ProductCard from '@/components/ProductCard';
 import { sanitizeProductImages } from '@/lib/images';
+import { stripHtmlToPlainText } from '@/lib/sanitize-description';
 
 export const revalidate = 60;
 
@@ -56,12 +57,14 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
   if (!product) return { title: 'Product Not Found | dear little things' };
 
+  const plainDesc = product.seoDescription || stripHtmlToPlainText(product.description);
+
   return {
     title: `${product.title.toLowerCase()} | dear little things`,
-    description: product.seoDescription || product.description.slice(0, 160),
+    description: plainDesc.slice(0, 160),
     openGraph: {
       title: product.title,
-      description: product.description.slice(0, 160),
+      description: plainDesc.slice(0, 160),
       images: product.images[0]?.url ? [{ url: product.images[0].url }] : [],
     },
   };
@@ -98,6 +101,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const sanitizedRelated = relatedProducts.map((p) => ({
     ...p,
+    description: stripHtmlToPlainText(p.description),
     images: sanitizeProductImages(p.images),
   }));
 
@@ -113,7 +117,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.title,
-    description: product.description,
+    description: stripHtmlToPlainText(product.description),
     image: product.images.map((img: ProductImageRow) => img.url),
     brand: {
       '@type': 'Brand',
