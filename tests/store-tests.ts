@@ -35,13 +35,13 @@ async function runTests() {
   // TEST 1: Password Hashing & Auth Token Verification
   // ----------------------------------------------------
   console.log('--- Test Suite 1: Authentication & Password Security ---');
-  const plainPassword = 'StudioSecretPassword2026!';
-  const hashedPassword = await hashPassword(plainPassword);
-  assert(hashedPassword !== plainPassword, 'Password is never stored in plaintext');
+  const testAuthSample = process.env.TEST_AUTH_SAMPLE_INPUT || 'sample-verification-phrase-for-hashing';
+  const hashedPassword = await hashPassword(testAuthSample);
+  assert(hashedPassword !== testAuthSample, 'Password is never stored in plaintext');
   assert(hashedPassword.startsWith('$2'), 'Password uses strong bcrypt hashing algorithm');
-  const isValid = await verifyPassword(plainPassword, hashedPassword);
+  const isValid = await verifyPassword(testAuthSample, hashedPassword);
   assert(isValid === true, 'Valid password successfully verifies against hash');
-  const isInvalid = await verifyPassword('WrongPassword', hashedPassword);
+  const isInvalid = await verifyPassword('mismatched-non-matching-sample-value', hashedPassword);
   assert(isInvalid === false, 'Incorrect password is appropriately rejected');
 
   const token = await createSessionToken({
