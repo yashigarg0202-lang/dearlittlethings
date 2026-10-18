@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
+import { sanitizeProductImages } from '@/lib/images';
 
 export const revalidate = 60;
 
@@ -105,6 +106,11 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       href: `/shop?category=${c.slug}`,
     })),
   ];
+
+  const sanitizedProducts = products.map((product) => ({
+    ...product,
+    images: sanitizeProductImages(product.images),
+  }));
 
   return (
     <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '4rem 1.5rem 8rem 1.5rem' }}>
@@ -240,7 +246,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             rowGap: '4.5rem',
           }}
         >
-          {products.map((product: ShopProduct, idx: number) => (
+          {sanitizedProducts.map((product: ShopProduct, idx: number) => (
             <ProductCard
               key={product.id}
               id={product.id}

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
+import { sanitizeProductImages } from '@/lib/images';
 
 export const revalidate = 60;
 
@@ -32,6 +33,11 @@ export default async function HomePage() {
   } catch (err) {
     console.error('Error fetching home products:', err);
   }
+
+  const sanitizedProducts = products.map((product) => ({
+    ...product,
+    images: sanitizeProductImages(product.images),
+  }));
 
   return (
     <div>
@@ -337,7 +343,7 @@ export default async function HomePage() {
             rowGap: '4rem',
           }}
         >
-          {products.map((product: HomeProduct, idx: number) => (
+          {sanitizedProducts.map((product: HomeProduct, idx: number) => (
             <ProductCard
               key={product.id}
               id={product.id}

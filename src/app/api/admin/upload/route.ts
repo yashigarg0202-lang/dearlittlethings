@@ -574,7 +574,8 @@ export async function POST(req: NextRequest) {
           .from('product-images')
           .getPublicUrl(safeFilename);
 
-        publicUrl = publicUrlData.publicUrl;
+        // Return root-relative storage path to prevent server-only SUPABASE_URL leakage in client bundles
+        publicUrl = `/storage/v1/object/public/product-images/${safeFilename}`;
       } else {
         // Local fallback (only for offline local development without Supabase)
         const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'products');

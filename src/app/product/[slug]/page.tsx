@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import ProductDetailClient from '@/components/ProductDetailClient';
 import ProductCard from '@/components/ProductCard';
+import { sanitizeProductImages } from '@/lib/images';
 
 export const revalidate = 60;
 
@@ -34,7 +35,7 @@ interface ProductPageProps {
 
 // Deduplicate product query across generateMetadata and ProductPage via React.cache
 const getProductBySlug = cache(async (slug: string): Promise<ProductPageItem | null> => {
-  return prisma.product.findUnique({
+  const prod = await prisma.product.findUnique({
     where: { slug },
     include: {
       category: true,
@@ -42,6 +43,11 @@ const getProductBySlug = cache(async (slug: string): Promise<ProductPageItem | n
       variants: { orderBy: { price: 'asc' } },
     },
   });
+  if (!prod) return null;
+  return {
+    ...prod,
+    images: sanitizeProductImages(prod.images),
+  };
 });
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
@@ -89,6 +95,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
       take: 3,
     }),
   ]);
+
+  const sanitizedRelated = relatedProducts.map((p) => ({
+    ...p,
+    images: sanitizeProductImages(p.images),
+  }));
 
   const shippingRates = domesticZone?.rates.map((r: ShippingRateRow) => ({
     name: r.name,
@@ -174,7 +185,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               rowGap: '4rem',
             }}
           >
-            {relatedProducts.map((p: RelatedProduct, idx: number) => (
+            {sanitizedRelated.map((p: RelatedProduct, idx: number) => (
               <ProductCard
                 key={p.id}
                 id={p.id}
